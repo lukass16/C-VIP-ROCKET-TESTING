@@ -12,6 +12,8 @@ namespace arming
     hw_timer_t *timer = NULL;
     portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
 
+    unsigned long secondSwitchStart = 0;
+
     void IRAM_ATTR onTimer()
     {
         portENTER_CRITICAL_ISR(&timerMux);

@@ -22,12 +22,6 @@ class PreperationState: public State {
             arming::setup();
             Wire.begin(12, 13);
 
-            if(magnetometer::hasBeenLaunch())
-            {
-                this->_context->RequestNextPhase(); //! Transition to flight state
-                this->_context->Start();
-            }
-
             buzzer::setup();
             buzzer::test();
             gps::setup(9600);            
@@ -36,6 +30,12 @@ class PreperationState: public State {
             flash::setup();
             flash::deleteFile("/test.txt");
             comms::setup(868E6);
+
+            if(magnetometer::hasBeenLaunch())
+            {
+                this->_context->RequestNextPhase(); //! Transition to flight state
+                this->_context->Start();
+            }
 
             //*Testing
 
@@ -56,32 +56,39 @@ class PreperationState: public State {
             //! Checks second switch with safety against fast pull
             while(!arming::armingSuccess())
             {
-                if(arming::checkSecondSwitch() && arming::timeKeeper && arming::fail == 0)
-                {
-                    magnetometer::saveCorToEEPROM();
-                    magnetometer::setAsCalibrated(); //!should include in main code
-                    arming::AlreadyCalibrated = 1;  
-                }
-                else if (arming::checkSecondSwitch() && !arming::timeKeeper)
+                // if(arming::checkSecondSwitch() && arming::timeKeeper && arming::fail == 0)
+                // {
+                //     magnetometer::saveCorToEEPROM();
+                //     magnetometer::setAsCalibrated(); //!should include in main code
+                //     arming::AlreadyCalibrated = 1;  
+                // }
+                // else 
+                if(arming::checkSecondSwitch() && !arming::timeKeeper)
                 {                                                                   
                     arming::fail = 1;                                                          
                     Serial.println("CALIBRATION FAILED, AFFIRMED TOO FAST"); 
-                }   
-                buzzer::signalSecondSwitch(); //!šis vairs nav gala variants - patioesībā būs tā ka 10 sekundes pīkstēs kad switch ir izvilkts un nepīkstēs kamēr switch nav izvilkts
+                } 
+                else if(arming::checkSecondSwitch()) //ja ir izvilkts slēdzis 
+                {
+                    buzzer::signalSecondSwitch();
+                    if((arming::secondSwitchStart - millis()) > 10000) //un ja pagājis vairāk kā noteiktais intervāls
+                    {
+                        arming::AlreadyCalibrated = 1;
+                    } 
+                }
+                else
+                {
+                    arming::secondSwitchStart = millis(); //resetto izvilkšanas sākuma laiku uz pašreizējo laiku
+                }
             }
             magnetometer::getCorEEPROM();
             magnetometer::displayCor(); //!should include in main code
 
       
             //* permanent loop while not successfull arming or not pulled third switch
-            while(!arming::armingSuccess() || !arming::checkThirdSwitch())
-            {
-                if(arming::armingSuccess() && arming::checkThirdSwitch())
-                {
-                    this->_context->RequestNextPhase();
-                    this->_context->Start();
-                }
-            }
+            while(!arming::checkSecondSwitch() || !arming::checkThirdSwitch()) {}
+            this->_context->RequestNextPhase();
+            this->_context->Start();
            
         }
 

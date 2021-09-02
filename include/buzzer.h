@@ -86,11 +86,11 @@ namespace buzzer {
     void signalSecondSwitch()
     {
         buzzer::buzz(2093);
-        delay(200);
-        buzzer::buzzEnd();
         delay(100);
+        buzzer::buzzEnd();
+        delay(50);
         buzzer::buzz(2093);
-        delay(200);
+        delay(100);
         buzzer::buzzEnd();
     }
 
