@@ -48,7 +48,7 @@ public:
         //*test
         unsigned long start_time = millis();
 
-        File file = flash::openFile(); //opening file for writing during flight
+        //File file = flash::openFile(); //opening file for writing during flight
 
 
         //!Ther is danger that if launch was detected previously the rocket goes straight to arming and setting apogee timers 
@@ -71,7 +71,7 @@ public:
         //while (!isApogee())
         while (millis()-start_time < 30000)
         {
-
+            buzzer::signalThirdSwitch();
 
             //While apogee isn't reached and the timer isn't yet enabled the rocket checks for launch to enable the timer - the checking of launch has no other functionality
             if (!timerEnabled)
@@ -108,17 +108,17 @@ public:
             Serial.println("Looping in flight state!");
 
             //TODO Flash
-            flash::writeData(file, gd, md, bd);
+            //flash::writeData(file, gd, md, bd);
 
             // delay(1000);
         }
 
         Serial.println("APOGEE DETECTED !!!");
-        flash::closeFile(file);
-        delay(10000);
-        Serial.println("[Test] Reading file");
-        flash::readFlash("/test.txt");
-        delay(100000);
+        // flash::closeFile(file);
+        // delay(10000);
+        // Serial.println("[Test] Reading file");
+        // flash::readFlash("/test.txt");
+        // delay(100000);
         
 
         this->_context->RequestNextPhase();

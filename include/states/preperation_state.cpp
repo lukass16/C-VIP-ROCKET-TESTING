@@ -17,6 +17,8 @@ class PreperationState: public State {
         void start () override {
             Serial.println("proof of concept --- PREP STATE");
 
+            buzzer::signalStart();
+
             arming::setup();
             Wire.begin(12, 13);
 
@@ -36,36 +38,50 @@ class PreperationState: public State {
             comms::setup(868E6);
 
             //*Testing
-            //magnetometer::calibrate(magnetometer::savedCorToEEPROM());
 
-            // //! Checks second switch with safety against fast pull
-            // while(!arming::armingSuccess())
-            // {
-            //     if(arming::checkSecondSwitch() && arming::timeKeeper && arming::fail == 0)
-            //     {
-            //         magnetometer::saveCorToEEPROM();
-            //         arming::AlreadyCalibrated = 1;  
-            //     }
-            //     else if (arming::checkSecondSwitch() && !arming::timeKeeper)
-            //     {                                                                   
-            //         arming::fail = 1;                                                          
-            //         Serial.println("CALIBRATION FAILED, AFFIRMED TOO FAST"); 
-            //     }   
-            // }
+            //!šis sākotnēji šādi neizskatījās speciāli izmainīju, lai var ielikt buzzer funkciju, patiesībā bija šādi: magnetometer::calibrate(magnetometer::savedCorToEEPROM());
+            if(!magnetometer::savedCorToEEPROM())
+            {
+                buzzer::signalCalibrationStart();
+                magnetometer::calibrate(0);
+                buzzer::signalCalibrationEnd();
+            }
+            else
+            {
+                buzzer::signalCalibrationStart();
+                buzzer::signalCalibrationEnd();
+            }
+            
+
+            //! Checks second switch with safety against fast pull
+            while(!arming::armingSuccess())
+            {
+                if(arming::checkSecondSwitch() && arming::timeKeeper && arming::fail == 0)
+                {
+                    magnetometer::saveCorToEEPROM();
+                    magnetometer::setAsCalibrated(); //!should include in main code
+                    arming::AlreadyCalibrated = 1;  
+                }
+                else if (arming::checkSecondSwitch() && !arming::timeKeeper)
+                {                                                                   
+                    arming::fail = 1;                                                          
+                    Serial.println("CALIBRATION FAILED, AFFIRMED TOO FAST"); 
+                }   
+                buzzer::signalSecondSwitch(); //!šis vairs nav gala variants - patioesībā būs tā ka 10 sekundes pīkstēs kad switch ir izvilkts un nepīkstēs kamēr switch nav izvilkts
+            }
             magnetometer::getCorEEPROM();
+            magnetometer::displayCor(); //!should include in main code
 
       
-            // //* permanent loop while not successfull arming or not pulled third switch
-            // while(!arming::armingSuccess() || !arming::checkThirdSwitch())
-            // {
-            //     if(arming::armingSuccess() && arming::checkThirdSwitch())
-            //     {
-            //         this->_context->RequestNextPhase();
-            //         this->_context->Start();
-            //     }
-            // }
-            this->_context->RequestNextPhase();
-            this->_context->Start();
+            //* permanent loop while not successfull arming or not pulled third switch
+            while(!arming::armingSuccess() || !arming::checkThirdSwitch())
+            {
+                if(arming::armingSuccess() && arming::checkThirdSwitch())
+                {
+                    this->_context->RequestNextPhase();
+                    this->_context->Start();
+                }
+            }
            
         }
 

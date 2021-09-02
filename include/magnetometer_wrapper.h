@@ -397,13 +397,13 @@ namespace magnetometer
         }
 
         //signaling the completion of calibration using the piezo
-        buzzer::buzz(125, 200);
+        buzzer::buzz(200);
         delay(500);
-        buzzer::buzz(125, 500);
+        buzzer::buzz(500);
         delay(500);
-        buzzer::buzz(125, 800);
+        buzzer::buzz(800);
         delay(500);
-        buzzer::buzz(125, 200);
+        buzzer::buzz(200);
 
         //getting offset values
         offset_x = (maxx + minx) / 2;
