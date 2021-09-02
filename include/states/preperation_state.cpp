@@ -31,6 +31,8 @@ class PreperationState: public State {
             flash::deleteFile("/test.txt");
             comms::setup(868E6);
 
+            //magnetometer::clearEEPROM();
+
             if(magnetometer::hasBeenLaunch())
             {
                 this->_context->RequestNextPhase(); //! Transition to flight state
@@ -48,6 +50,7 @@ class PreperationState: public State {
             }
             else
             {
+                Serial.println("Magnetometer has already been calibrated - skipping calibration process");
                 buzzer::signalCalibrationStart();
                 buzzer::signalCalibrationEnd();
             }
@@ -74,6 +77,8 @@ class PreperationState: public State {
                     if((arming::secondSwitchStart - millis()) > 10000) //un ja pagājis vairāk kā noteiktais intervāls
                     {
                         arming::AlreadyCalibrated = 1;
+                        magnetometer::saveCorToEEPROM();
+                        magnetometer::setAsCalibrated();
                     } 
                 }
                 else
@@ -84,7 +89,6 @@ class PreperationState: public State {
             magnetometer::getCorEEPROM();
             magnetometer::displayCor(); //!should include in main code
 
-      
             //* permanent loop while not successfull arming or not pulled third switch
             while(!arming::checkSecondSwitch() || !arming::checkThirdSwitch()) {}
             this->_context->RequestNextPhase();
