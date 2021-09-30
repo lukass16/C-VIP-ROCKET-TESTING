@@ -59,11 +59,42 @@ namespace lora {
         Serial.println(LoRa.available());
     }
 
-    void readMessage() {
+    void readMessageLegacy() {
         onReceive(LoRa.parsePacket());
     }
+    //*NEW
+    String readMessage(){
+        int packetSize = LoRa.parsePacket();
+        String message = "";
+        if(packetSize){
+            int recipient = LoRa.read();
+            if (recipient != _localAddress && recipient != 0xFF) {
+                Serial.println("This message is not for me, recipient: " + String(recipient));
+                return "NULL";                            
+            }   
+            while(LoRa.available()){
+                message += (char)LoRa.read();
+            }
+            Serial.print("Message: " + message);
+        }
+        else{
+            return "NULL";
+        }
+        Serial.println(" RSSI: " + String(LoRa.packetRssi()));
+        return message;
+    }
 
-    void sendMessage(String outgoing, int lora_message_id) {
+    void sendMessage(String outgoing) {
+        LoRa.beginPacket();                  
+        LoRa.write(_destination);             // add destination address
+        LoRa.print(outgoing);                 // add payload
+        LoRa.endPacket();                     // finish packet and send it
+    }
+
+    //*NEW
+
+
+    void sendMessageLegacy(String outgoing, int lora_message_id) {
         LoRa.beginPacket();                   // start packet
         LoRa.write(_destination);             // add destination address
         LoRa.write(_localAddress);            // add sender address
