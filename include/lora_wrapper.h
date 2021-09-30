@@ -21,7 +21,7 @@ namespace lora {
     int syncWord = 0xF3;
 
     byte _localAddress = 0xFF;     // address of this device
-    byte _destination = 0xBB;      // destination to send to
+    byte _destination = 0xFF;      // destination to send to
     long lastSendTime = 0;        // last send time
     int interval = 2000;          // interval between sends
     boolean _canPrintHeaderMessage = false;
@@ -46,9 +46,10 @@ namespace lora {
 
 
         //setting paramaters
-
+        int txPower = 10;
         LoRa.setSyncWord(0xF3);
-        LoRa.setTxPower(20);
+        LoRa.setTxPower(txPower); //!changed from 20
+        Serial.println("TxPower: " + String(txPower));
         LoRa.setSpreadingFactor(9);
         LoRa.setCodingRate4(7);
         LoRa.setSignalBandwidth(31.25E3);

@@ -38,9 +38,9 @@ namespace magnetometer
     int interval = 10000;
 
     // declaring variables for offsets
-    float offset_x = 0;
-    float offset_y = 0;
-    float offset_z = 0;
+    float offset_x = 1;
+    float offset_y = 2;
+    float offset_z = 3;
 
     // declaring variables for average deltas
     float avg_delta = 0;
@@ -49,9 +49,9 @@ namespace magnetometer
     float avg_delta_z = 0;
 
     // declaring variables for x y z scale factors
-    float scale_x = 1;
-    float scale_y = 1;
-    float scale_z = 1;
+    float scale_x = 4;
+    float scale_y = 5;
+    float scale_z = 6;
 
     // declaring variables for corrected x y z values
     float cor_x;
@@ -61,7 +61,7 @@ namespace magnetometer
     //* TIMER FUNCTIONALITY
     //creating variables for timer and launch
     unsigned long periodOfAcc = 0, lastTime = 0, detAccDur = 40; //detAccDur in milliseconds (/?)
-    float detAcc = -15;
+    float detAcc = 0;
     int countAcc = 0;
 
     //creating a variable for timer detection of apogee
@@ -83,10 +83,9 @@ namespace magnetometer
         portEXIT_CRITICAL_ISR(&timerMux);
     }
 
-
     bool launch()
     {
-        if (IMU.getAccelZ_mss() > detAcc) //-20
+        if (IMU.getAccelY_mss() > detAcc) //-20
         {
             countAcc++;
         }
@@ -114,7 +113,7 @@ namespace magnetometer
     //     if (periodOfAcc > detAccDur)
     //     {
     //         Serial.println("Writing to EEPROM that launch detected");
-    //         EEPROM.writeFloat(36, 1); 
+    //         EEPROM.writeFloat(36, 1);
     //         return 1;
     //     }
     //     return 0;
@@ -123,7 +122,7 @@ namespace magnetometer
     void startApogeeTimer(int timerLength)
     {
         //initializing timer - setting the number of the timer, the value of the prescaler and stating that the counter should count up (true)
-        timer = timerBegin(0, 80, true);   //?Is there a possibilty of an error if the same timer is used many times for different applications?
+        timer = timerBegin(0, 80, true); //?Is there a possibilty of an error if the same timer is used many times for different applications?
 
         //binding the timer to a handling function
         timerAttachInterrupt(timer, &onTimer, true);
@@ -149,7 +148,6 @@ namespace magnetometer
         }
     }
     //*TIMER FUNCTIONALITY END
-
 
     //*ACCELEROMETER FUNCTIONALITY
     // declaring variables for current accelerometer x y z values in the loop
@@ -194,7 +192,6 @@ namespace magnetometer
     }
     //*ACCELEROMETER FUNCTIONALITY END
 
-
     //*EEPROM FUNCTIONALITY
     void saveCorToEEPROM()
     {
@@ -214,12 +211,14 @@ namespace magnetometer
 
     void setAsCalibrated()
     {
+        Serial.println("Set magnetometer as calibrated");
         EEPROM.writeFloat(0, 1); //1 for true
         EEPROM.commit();
     }
 
     void setAsNotCalibrated()
     {
+        Serial.println("Set magnetometer as not calibrated");
         EEPROM.writeFloat(0, 0); //1 for true
         EEPROM.commit();
     }
@@ -244,12 +243,23 @@ namespace magnetometer
         scale_y = EEPROM.readFloat(16);
         offset_z = EEPROM.readFloat(20);
         scale_z = EEPROM.readFloat(24);
+        Serial.println("Retrieved magnetometer calibration values from EEPROM");
+    }
+
+    void clearEEPROM()
+    {
+        for (int i = 0; i <= 36; i = i + 4)
+        {
+            EEPROM.writeFloat(i, 0.0);
+        }
+        Serial.println("Cleared EEPROM");
+        EEPROM.commit();
     }
 
     //TODO test
     bool hasBeenLaunch()
     {
-        if(EEPROM.readFloat(36) == 1)
+        if (EEPROM.readFloat(36) == 1)
         {
             Serial.println("Previous launch detected!");
             return 1;
@@ -277,7 +287,6 @@ namespace magnetometer
         Serial.println(scale_z);
     }
     //*EEPROM FUNCTIONALITY END
-
 
     void getMagValues()
     {
@@ -312,7 +321,8 @@ namespace magnetometer
             Serial.println("Check IMU wiring or try cycling power");
             Serial.print("Status: ");
             Serial.println(status);
-            while (true);
+            while (true)
+                ;
         }
 
         Serial.println("Magnetometer ready!");
@@ -397,13 +407,13 @@ namespace magnetometer
         }
 
         //signaling the completion of calibration using the piezo
-        buzzer::buzz(200);
-        delay(500);
-        buzzer::buzz(500);
-        delay(500);
-        buzzer::buzz(800);
-        delay(500);
-        buzzer::buzz(200);
+        // buzzer::buzz(200);
+        // delay(500);
+        // buzzer::buzz(500);
+        // delay(500);
+        // buzzer::buzz(800);
+        // delay(500);
+        // buzzer::buzz(200);
 
         //getting offset values
         offset_x = (maxx + minx) / 2;
@@ -489,5 +499,5 @@ namespace magnetometer
         }
         buzzer::buzz(0);
     }
-    
+
 }
