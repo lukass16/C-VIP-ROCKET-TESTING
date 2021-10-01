@@ -1,10 +1,13 @@
 #pragma once
+#include <cstdio>
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include "sensor_data.h"
 
 #include "lora_wrapper.h"
 #include "thread_wrapper.h"
+
+using namespace std;
 
 namespace comms {   
     String sensorDataToJson();
@@ -22,6 +25,7 @@ namespace comms {
         while (true)
         {
             String serializedJson = sensorDataToJson();
+            //String serialized = comms::serializeData();
             lora::sendMessage(serializedJson, s_data.lora_message_id);
             Serial.print("Lora (msg id: ");
             Serial.print(s_data.lora_message_id);
@@ -31,6 +35,17 @@ namespace comms {
             delay(2000);
         }
         
+    }
+
+    String serializeData(){
+        char outgoing [100];
+        static int counter = 0;
+        sens_data::GpsData gps = s_data.getGpsData();
+        sens_data::MagenetometerData mag = s_data.getMagnetometerData();
+        sens_data::BarometerData bar = s_data.getBarometerData();
+        sprintf(outgoing, "%7.4f,%7.4f,%5.0f,%5.2f,%5.2f,%5.2f,%3.1f,%5.1f,%6.1f,%4d", gps.lat, gps.lng, gps.alt, mag.x, mag.y, mag.z, bar.temperature, bar.pressure, bar.altitude, counter);
+        counter++;
+        return outgoing;
     }
 
     String sensorDataToJson() {
