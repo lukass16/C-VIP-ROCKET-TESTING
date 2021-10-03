@@ -59,11 +59,9 @@ namespace lora {
         Serial.println(LoRa.available());
     }
 
-    void readMessage() {
-        onReceive(LoRa.parsePacket());
-    }
-<<<<<<< Updated upstream
-=======
+    // void readMessage() {
+    //     onReceive(LoRa.parsePacket());
+    // }
     //*NEW
     String readMessage(){
         int packetSize = LoRa.parsePacket();
@@ -100,7 +98,6 @@ namespace lora {
 
     //*NEW
 
->>>>>>> Stashed changes
 
     void sendMessage(String outgoing, int lora_message_id) {
         LoRa.beginPacket();                   // start packet

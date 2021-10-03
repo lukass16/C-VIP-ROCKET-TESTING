@@ -11,6 +11,7 @@ using namespace std;
 
 namespace comms {   
     String sensorDataToJson();
+    String serializeData();
     void loop(void *args);
 
     void setup(double frequency = 868E6) {
@@ -24,13 +25,13 @@ namespace comms {
         // Send lora every 2 secs
         while (true)
         {
-            String serializedJson = sensorDataToJson();
+            String serialized = comms::serializeData();
             //String serialized = comms::serializeData();
-            lora::sendMessage(serializedJson, s_data.lora_message_id);
+            lora::sendMessage(serialized, s_data.lora_message_id);
             Serial.print("Lora (msg id: ");
             Serial.print(s_data.lora_message_id);
             Serial.print(") sent: ");
-            Serial.println(serializedJson);
+            Serial.println(serialized);
             s_data.lora_message_id++;
             delay(2000);
         }
@@ -38,7 +39,7 @@ namespace comms {
     }
 
     String serializeData(){
-        char outgoing [100];
+        char outgoing [80];
         static int counter = 0;
         sens_data::GpsData gps = s_data.getGpsData();
         sens_data::MagenetometerData mag = s_data.getMagnetometerData();
