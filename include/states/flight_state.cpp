@@ -25,7 +25,7 @@ private:
         if (magnetometer::isApogee())
         {
             count++; // [old] for testing purposes commented out
-            if (count>100)
+            if (count>5)
             {
                 Serial.println("Magnetometer detected apogee!");
                 return true;
@@ -53,9 +53,9 @@ public:
         Serial.println("proof of concept --- FLIGHT STATE");
 
         //*test
-        unsigned long start_time = millis();
+        //unsigned long start_time = millis();
 
-        //File file = flash::openFile(); //opening file for writing during flight
+        File file = flash::openFile(); //opening file for writing during flight
 
         //!There is danger that if launch was detected previously the rocket goes straight to arming and setting apogee timers 
         //!so if launch is detected and during testing the launchDetected EEPROM value is not changed it could lead to an inadvertent triggering of the mechanism
@@ -76,7 +76,7 @@ public:
         */
         
         //while (millis()-start_time < 30000)
-        while (1/*!isApogee() && !magnetometer::timerDetectApogee()*/) //!should change to just apogee - Commented out for Radio test
+        while (!isApogee()) //!should change to just apogee - Commented out for Radio test
         {
             //Serial.println("Got in loop");
             buzzer::signalThirdSwitch();
@@ -116,20 +116,20 @@ public:
             //Serial.println("Looping in flight state!");
 
             //TODO Flash
-            //flash::writeData(file, gd, md, bd);
+            flash::writeData(file, gd, md, bd);
 
-            // delay(1000);
+            delay(500);
         }
 
         Serial.println("APOGEE DETECTED !!!");
         //*NEW
         arming::nihromActivate();
     
-        // flash::closeFile(file);
-        // delay(10000);
-        // Serial.println("[Test] Reading file");
-        // flash::readFlash("/test.txt");
-        // delay(100000);
+        flash::closeFile(file);
+        delay(10000);
+        Serial.println("[Test] Reading file");
+        flash::readFlash("/test.txt");
+        delay(100000000);
         
         this->_context->RequestNextPhase();
         this->_context->Start();

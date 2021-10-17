@@ -33,11 +33,11 @@ class PreperationState: public State {
             flash::deleteFile("/test.txt");
             comms::setup(868E6);
 
-            //magnetometer::clearEEPROM();
+            magnetometer::clearEEPROM();
             magnetometer::getCorEEPROM();
             magnetometer::displayCor();
 
-            if(1/*magnetometer::hasBeenLaunch()*/)
+            if(magnetometer::hasBeenLaunch())
             {
                 this->_context->RequestNextPhase(); //! Transition to flight state
                 this->_context->Start();
@@ -51,7 +51,7 @@ class PreperationState: public State {
             if(!magnetometer::savedCorToEEPROM())
             {
                 buzzer::signalCalibrationStart();
-                magnetometer::calibrate(1);
+                magnetometer::calibrate(0);
                 buzzer::signalCalibrationEnd();
             }
             else
@@ -61,8 +61,6 @@ class PreperationState: public State {
                 buzzer::signalCalibrationEnd();
             }
             
-
-            //! Checks second switch with safety against fast pull
             arming::secondSwitchStart = millis();
             while(!arming::armingSuccess())
             {

@@ -6,6 +6,8 @@
 
 #define FORMAT_LITTLEFS_IF_FAILED true
 
+//*Fixed error of abort() by esp32
+
 //to simplify the usage of the Flash header declared a different function - deleteFile - this serves as it's basis
 void delete_File(fs::FS &fs, const char *path)
 {
@@ -113,9 +115,13 @@ namespace flash
     void writeData(File file, sens_data::GpsData gpsData, sens_data::MagenetometerData magData, sens_data::BarometerData barData)
     {
         //GPS
-        auto lat = (uint8_t *)(&gpsData.lat);
-        auto lng = (uint8_t *)(&gpsData.lng);
-        auto alt = (uint8_t *)(&gpsData.alt);
+        float _lat = gpsData.lat;
+        float _lng = gpsData.lng;
+        float _alt = gpsData.alt;
+
+        auto lat = (uint8_t *)(&_lat);
+        auto lng = (uint8_t *)(&_lng);
+        auto alt = (uint8_t *)(&_alt);
 
         //Mag
         auto x = (uint8_t *)(&magData.x);
@@ -159,7 +165,7 @@ namespace flash
     {
         File file = LITTLEFS.open(path);
         //This is the size of reading
-        auto const buf_size = sizeof(double) + sizeof(double) + sizeof(double) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float);   
+        auto const buf_size = sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float);   
         while (file.available())
         {
             ; //! why?
@@ -168,16 +174,16 @@ namespace flash
             file.readBytes(stream.buf_out, buf_size);
  
             //GPS
-            double lat = 0;
-            stream.getValue<double>(&lat);
+            float lat = 0;
+            stream.getValue<float>(&lat);
             Serial.println("lat: " + String(lat, 10));
 
-            double lng = 0;
-            stream.getValue<double>(&lng);
+            float lng = 0;
+            stream.getValue<float>(&lng);
             Serial.println("lng: " + String(lng, 10));
 
-            double alt = 0;
-            stream.getValue<double>(&alt);
+            float alt = 0;
+            stream.getValue<float>(&alt);
             Serial.println("alt: " + String(alt, 10));
 
             //Mag
