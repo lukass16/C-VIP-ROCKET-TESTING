@@ -25,19 +25,19 @@ class PreperationState: public State {
             Wire.begin(12, 13);
 
             buzzer::setup();
-            buzzer::test();
-            gps::setup(9600);            
+            buzzer::test();            
             barometer::setup();
             magnetometer::setup();
-            flash::setup();
-            flash::deleteFile("/test.txt");
+            // flash::setup();
+            // flash::deleteFile("/test.txt");
+            gps::setup(9600);
             comms::setup(868E6);
-
+            delay(100000);
             magnetometer::clearEEPROM();
             magnetometer::getCorEEPROM();
             magnetometer::displayCor();
 
-            if(magnetometer::hasBeenLaunch())
+            if(1/*magnetometer::hasBeenLaunch()*/)
             {
                 this->_context->RequestNextPhase(); //! Transition to flight state
                 this->_context->Start();
@@ -51,7 +51,7 @@ class PreperationState: public State {
             if(!magnetometer::savedCorToEEPROM())
             {
                 buzzer::signalCalibrationStart();
-                magnetometer::calibrate(0);
+                magnetometer::calibrate(1);
                 buzzer::signalCalibrationEnd();
             }
             else

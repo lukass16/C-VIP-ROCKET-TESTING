@@ -4,11 +4,20 @@
 #include "sensor_data.h"
 #include "EEPROM.h"
 
+//*Fun error Sundays:
+//https://community.platformio.org/t/guru-meditation-error-core-1-paniced-cache-disabled-but-cached-memory-region-accessed/13214/6
+//https://github.com/plerup/espsoftwareserial/issues/156
+
+//*Fun fact Sundays:
+//You don't have to have the correct TXPIN as you ar enot writing to the gps - you only really need the RX pin to be right
+
+//*Possible solutions Tuesday's
+//https://githubmemory.com/repo/plerup/espsoftwareserial/issues/165
 
 namespace gps {
-
-    #define RXPIN 15 //P4 on lopy is set to RX pin (important to remember about crossover connection)
-    #define TXPIN 4  //P3
+    //for some reason when the correct pin definitions are set the lopy dies
+    #define RXPIN 4 //P4 on lopy is set to RX pin (important to remember about crossover connection)
+    #define TXPIN 15  //P3
     SoftwareSerial gpsSerial;
     SoftwareSerialConfig ssc = SWSERIAL_8N1; // 8bits-no_parity-1_stop_bit  https://github.com/plerup/espsoftwareserial/
     TinyGPSPlus gps;
@@ -40,6 +49,15 @@ namespace gps {
         // Serial.println(gps.location.lng(), 6);
         // Serial.print("ALT=");
         // Serial.println(gps.altitude.meters());
+    }
+
+    void killSerial()
+    {
+        gpsSerial.enableRx(0);
+    }
+    void reviveSerial()
+    {
+        gpsSerial.enableRx(1);
     }
 
     double lastLatitude() {

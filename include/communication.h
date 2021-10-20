@@ -6,6 +6,8 @@
 
 #include "lora_wrapper.h"
 #include "thread_wrapper.h"
+//!testing
+#include "flash.h"
 
 using namespace std;
 
@@ -23,6 +25,9 @@ namespace comms {
     // This is ran in a seperate thread
     void loop(void *args = NULL) {
         // Send lora every 2 secs
+        flash::setup();
+        flash::deleteFile("/test.txt");
+        File file = flash::openFile();
         while (true)
         {
             String serialized = comms::serializeData();
@@ -33,6 +38,7 @@ namespace comms {
             Serial.print(") sent: ");
             Serial.println(serialized);
             s_data.lora_message_id++;
+            flash::testFileIO(file, 2);
             delay(2000);
         }
         
