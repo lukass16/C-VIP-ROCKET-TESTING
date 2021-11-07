@@ -76,7 +76,7 @@ public:
         */
         
         //while (millis()-start_time < 30000)
-        while (1/*!isApogee()*/) //!should change to just apogee - Commented out for Radio test
+        while (!isApogee()) //!should change to just apogee - Commented out for Radio test
         {
             //Serial.println("Got in loop");
             buzzer::signalThirdSwitch();

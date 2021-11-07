@@ -30,6 +30,7 @@ namespace comms {
         File file = flash::openFile();
         while (true)
         {
+            
             String serialized = comms::serializeData();
             //String serialized = comms::serializeData();
             lora::sendMessage(serialized, s_data.lora_message_id);
