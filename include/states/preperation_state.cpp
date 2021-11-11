@@ -45,19 +45,21 @@ class PreperationState: public State {
 
         void start () override {
             Serial.println("PREP STATE");
-            buzzer::signalStart();
 
             arming::setup();
             Wire.begin(12, 13);
 
             buzzer::setup();
-            buzzer::test();
-            flash::setup();
-            flash::deleteFile("/test.txt"); //!if is reset mid-flight file gets deleted
+            buzzer::signalStart();
+            //flash::setup();
+            //flash::deleteFile("/test.txt"); //!if is reset mid-flight file gets deleted
             gps::setup(9600);            
             barometer::setup();
-            magnetometer::setup();
+            //magnetometer::setup();
             comms::setup(868E6);
+
+            this->_context->RequestNextPhase(); //! Transition to flight state
+            this->_context->Start();
 
             if(arming::clearEEPROM()) //checks EEPROM clear jumper
             {

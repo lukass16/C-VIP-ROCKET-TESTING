@@ -41,32 +41,32 @@ class FlightState : public State {
         {
             Serial.println("FLIGHT STATE");
 
-            File file = flash::openFile(); //opening file for writing during flight
-            bool start_writing = 0;
-            if(magnetometer::hasBeenLaunch())
-            {
-                start_writing = 1;
-            }
+            //File file = flash::openFile(); //opening file for writing during flight
+            //bool start_writing = 0;
+            // if(magnetometer::hasBeenLaunch())
+            // {
+            //     start_writing = 1;
+            // }
             
             //!There is danger that if launch was detected previously the rocket goes
             //!straight to arming and setting apogee timers, so if launch is detected and during testing 
             //!the launchDetected EEPROM value is not changed it could lead to an inadvertent triggering of the mechanism - should test whether if arming pin is inserted this can happen
 
-            while (!isApogee())
+            while (true)
             {
                 buzzer::signalThirdSwitch();
-                //While apogee isn't reached and the timer isn't yet enabled the rocket checks for launch to enable the timer - the checking of launch has no other functionality
-                if (!timerEnabled)
-                {
-                    if (magnetometer::launch())  //checks if rocket has been launched
-                    {
-                        magnetometer::startApogeeTimer(14000000); //code to start timer - prints TIMER ENABLED if timer enabled
-                        buzzer::buzz(4000);
-                        Serial.println("Launch detected!");
-                        timerEnabled = 1;
-                        start_writing = 1;
-                    }
-                }
+                // //While apogee isn't reached and the timer isn't yet enabled the rocket checks for launch to enable the timer - the checking of launch has no other functionality
+                // if (!timerEnabled)
+                // {
+                //     if (magnetometer::launch())  //checks if rocket has been launched
+                //     {
+                //         magnetometer::startApogeeTimer(14000000); //code to start timer - prints TIMER ENABLED if timer enabled
+                //         buzzer::buzz(4000);
+                //         Serial.println("Launch detected!");
+                //         timerEnabled = 1;
+                //         start_writing = 1;
+                //     }
+                // }
 
                 // GPS
                 gps::readGps();
@@ -77,10 +77,10 @@ class FlightState : public State {
                     s_data.setGpsData(gd);
                 }
 
-                // MAGNETOMETER
-                magnetometer::readMagnetometer();
-                sens_data::MagenetometerData md = magnetometer::getMagnetometerState();
-                s_data.setMagnetometerData(md);
+                // // MAGNETOMETER
+                // magnetometer::readMagnetometer();
+                // sens_data::MagenetometerData md = magnetometer::getMagnetometerState();
+                // s_data.setMagnetometerData(md);
 
                 // BAROMETER
                 sens_data::BarometerData bd = barometer::getBarometerState();
@@ -90,16 +90,16 @@ class FlightState : public State {
                 sens_data::BatteryData btd = arming::getBatteryState();
                 s_data.setBatteryData(btd);
 
-                if(start_writing)
-                {
-                    flash::writeData(file, gd, md, bd, btd); //writing data to flash memory
-                }
+                // if(start_writing)
+                // {
+                //     flash::writeData(file, gd, md, bd, btd); //writing data to flash memory
+                // }
                 
             }
-            Serial.println("APOGEE DETECTED !!!");
-            arming::nihromActivate();
+            // Serial.println("APOGEE DETECTED !!!");
+            // arming::nihromActivate();
 
-            flash::closeFile(file); //closing flash file
+            // flash::closeFile(file); //closing flash file
 
             this->_context->RequestNextPhase();
             this->_context->Start();
