@@ -3,7 +3,8 @@
 #include "Arduino.h"
 #define RESONATING_FREQ 3400
 
-namespace buzzer {
+namespace buzzer
+{
 
     //declaring a variable for the piezo pin
     int piezo_pin = 21;
@@ -15,19 +16,27 @@ namespace buzzer {
     //declaring variables for PWM channel attributes
     int freq = 400, channel = 0, resolution = 8;
 
-    void setup() {
-        ledcSetup(channel, freq, resolution); //setting up the PWM channel, with a resolution of 8 bits
-        ledcAttachPin(piezo_pin, channel); //attaching the piezo_pin to the PWM channel
+    void setup()
+    {
+        ledcSetup(channel, freq, resolution); //setting up the PWM channel
+        ledcAttachPin(piezo_pin, channel);    //attaching the piezo_pin to the PWM channel
 
         Serial.println("Buzzer ready!");
     }
 
-    void buzz(uint freq = freq) {
+    void setPiezoPin(u_int piezo_pin)
+    {
+        buzzer::piezo_pin = piezo_pin;
+    }
+
+    void buzz(uint freq = freq)
+    {
         ledcWriteTone(channel, freq);
         ledcWrite(channel, 127);
     }
 
-    void buzzCustom(u_int soundLevel, uint freq = freq) {
+    void buzzCustom(u_int soundLevel, uint freq = freq)
+    {
         ledcWriteTone(channel, freq);
         ledcWrite(channel, soundLevel);
     }
@@ -36,21 +45,6 @@ namespace buzzer {
     {
         buzzer::buzzCustom(0, 0);
     }
-
-    void setPiezoPin(u_int piezo_pin) {
-        buzzer::piezo_pin = piezo_pin;
-    }
-
-    void test() {
-        buzzer::buzzCustom(127, 200);
-        delay(500);
-        buzzer::buzzCustom(127, 500);
-        delay(500);
-        buzzer::buzzCustom(127, 800);
-        delay(500);
-        buzzer::buzzEnd();
-    }
-
 
     void signalStart()
     {
@@ -71,7 +65,6 @@ namespace buzzer {
         delay(300);
         buzzer::buzzEnd();
     }
-
 
     void signalCalibrationEnd()
     {
@@ -100,7 +93,7 @@ namespace buzzer {
         if (currentTime - previousTime >= interval)
         {
             previousTime = currentTime; //save the last time that buzzer was toggled
-            if(!thirdSwitchBeep)  //if not buzzing
+            if (!thirdSwitchBeep)       //if not buzzing
             {
                 buzzer::buzz(3400);
                 thirdSwitchBeep = true;
@@ -115,14 +108,14 @@ namespace buzzer {
 
     void signalDescent() //identical to previous function
     {
-        int interval = 1000; //interval time in milliseconds
+        int interval = 2000; //interval time in milliseconds
         currentTime = millis();
         if (currentTime - previousTime >= interval)
         {
             previousTime = currentTime; //save the last time that buzzer was toggled
-            if(!thirdSwitchBeep)  //if not buzzing
+            if (!thirdSwitchBeep)       //if not buzzing
             {
-                buzzer::buzz(3400);
+                buzzer::buzz(2000);
                 thirdSwitchBeep = true;
             }
             else
@@ -133,7 +126,7 @@ namespace buzzer {
         }
     }
 
-     void signalSavedValues()
+    void signalSavedValues()
     {
         buzzer::buzz(480);
         delay(500);
@@ -144,6 +137,15 @@ namespace buzzer {
         buzzer::buzzEnd();
     }
 
-
+    void test()
+    {
+        buzzer::buzzCustom(127, 200);
+        delay(500);
+        buzzer::buzzCustom(127, 500);
+        delay(500);
+        buzzer::buzzCustom(127, 800);
+        delay(500);
+        buzzer::buzzEnd();
+    }
 
 }

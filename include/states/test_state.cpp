@@ -8,8 +8,7 @@ class TestState: public State {
     public: 
         void start () override {
             magnetometer::setup();
-            magnetometer::calibrate();
-            magnetometer::testCalibratedAxis();            
+            magnetometer::calibrate();     
         }
 
         void HandleNextPhase() override {

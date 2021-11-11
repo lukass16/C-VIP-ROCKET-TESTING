@@ -10,7 +10,7 @@ Context *mode = new Context(new PreperationState);
 //Context *mode = new Context(new TestState);
 
 void setup() {
-    Serial.begin(115200);
+    Serial.begin(9600);
 
     mode->Start();
 }

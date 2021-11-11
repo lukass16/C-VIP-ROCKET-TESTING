@@ -9,16 +9,42 @@
 #include "flight_state.cpp"
 #include "test_state.cpp"
 #include "arming.h"
-#include "EEPROM.h" //*NEW
 #include "flash.h"
+#include "EEPROM.h"
 
 class PreperationState: public State {
     public: 
+
+        void extractData() {
+            static int executions = 0;
+
+            // GPS
+            gps::readGps();
+            sens_data::GpsData gd;
+            if (gps::hasData)
+            {
+                gd = gps::getGpsState();
+                s_data.setGpsData(gd);
+            }
+            // MAGNETOMETER
+            magnetometer::readMagnetometer();
+            sens_data::MagenetometerData md = magnetometer::getMagnetometerState();
+            s_data.setMagnetometerData(md);
+            // BAROMETER
+            sens_data::BarometerData bd = barometer::getBarometerState();
+            s_data.setBarometerData(bd);
+
+            if(executions % 700 == 0)
+            {
+                //Print necessary info during preperation state
+                Serial.println("Lopy Battery Voltage: " + String(arming::getLopyBatteryVoltage()) + "V Parachute Battery 1 Voltage: " + String(arming::getBattery1Voltage()) + "V  Parachute Battery 2 Voltage: " + String(arming::getBattery2Voltage()) + "V");
+                Serial.println("GPS satellites: " + String(gd.sats));
+            }
+            executions++;
+        }
+
         void start () override {
-            Serial.println("proof of concept --- PREP STATE");
-
-            int ex_been = 0;
-
+            Serial.println("PREP STATE");
             buzzer::signalStart();
 
             arming::setup();
@@ -26,14 +52,17 @@ class PreperationState: public State {
 
             buzzer::setup();
             buzzer::test();
+            flash::setup();
+            flash::deleteFile("/test.txt"); //!if is reset mid-flight file gets deleted
             gps::setup(9600);            
             barometer::setup();
             magnetometer::setup();
-            flash::setup();
-            flash::deleteFile("/test.txt");
             comms::setup(868E6);
 
-            magnetometer::clearEEPROM();
+            if(arming::clearEEPROM()) //checks EEPROM clear jumper
+            {
+                magnetometer::clearEEPROM();
+            }
             magnetometer::getCorEEPROM();
             magnetometer::displayCor();
 
@@ -43,45 +72,34 @@ class PreperationState: public State {
                 this->_context->Start();
             }
 
-            //*Testing
-
-            //TODO if magnetometer already calibrated still waiting to retrieve values - sets new
-
-            //!šis sākotnēji šādi neizskatījās speciāli izmainīju, lai var ielikt buzzer funkciju, patiesībā bija šādi: magnetometer::calibrate(magnetometer::savedCorToEEPROM());
             if(!magnetometer::savedCorToEEPROM())
             {
                 buzzer::signalCalibrationStart();
-                magnetometer::calibrate(1);
+                magnetometer::calibrate();
                 buzzer::signalCalibrationEnd();
             }
             else
             {
-                Serial.println("Magnetometer has already been calibrated - skipping calibration process");
+                Serial.println("Calibration skipped - EEPROM shows as calibrated");
                 buzzer::signalCalibrationStart();
                 buzzer::signalCalibrationEnd();
             }
-            
+
             arming::secondSwitchStart = millis();
-            while(!arming::armingSuccess())
+            while(!arming::armingSuccess() && !magnetometer::savedCorToEEPROM())
             {
-                // if(arming::checkSecondSwitch() && arming::timeKeeper && arming::fail == 0)
-                // {
-                //     magnetometer::saveCorToEEPROM();
-                //     magnetometer::setAsCalibrated(); //!should include in main code
-                //     arming::AlreadyCalibrated = 1;  
-                // }
-                // else 
-                if(!arming::checkFirstSwitch() && !ex_been)
+                extractData(); //give Data to LoRa for sending and print necessary data in Serial
+                if(!arming::checkFirstSwitch() && !arming::firstSwitchHasBeen)
                 {
                     buzzer::buzz(1080);
                     delay(1000);
                     buzzer::buzzEnd();
-                    ex_been = 1;
+                    arming::firstSwitchHasBeen = 1;
                 }
                 if(arming::checkSecondSwitch() && !arming::timeKeeper)
                 {                                                                   
                     arming::fail = 1;                                                          
-                    Serial.println("CALIBRATION FAILED, AFFIRMED TOO FAST"); 
+                    Serial.println("Calibration failed, affirmed too fast!"); 
                 } 
                 else if(arming::checkSecondSwitch() && arming::checkThirdSwitch()) //ja ir izvilkts slēdzis 
                 {
@@ -91,24 +109,20 @@ class PreperationState: public State {
                         arming::AlreadyCalibrated = 1;
                         magnetometer::saveCorToEEPROM();
                         magnetometer::setAsCalibrated();
-                        Serial.println("SAGLABATAS VERTIBAS");
+                        Serial.println("EEPROM calibration values saved");
                         buzzer::signalSavedValues();
                     } 
                 }
                 else
                 {
-                    //Serial.println("Nav sledzis");
                     arming::secondSwitchStart = millis(); //resetto izvilkšanas sākuma laiku uz pašreizējo laiku
                 }
             }
             magnetometer::getCorEEPROM();
-            magnetometer::displayCor(); //!should include in main code
+            magnetometer::displayCor();
 
-            //* permanent loop while not successfull arming or not pulled third switch
-            while(!arming::checkSecondSwitch() || arming::checkThirdSwitch())
-            {
-                //nothing
-            }
+            //permanent loop while not pulled third switch
+            while(!arming::checkSecondSwitch() || arming::checkThirdSwitch()) {extractData();}
             this->_context->RequestNextPhase();
             this->_context->Start();
            

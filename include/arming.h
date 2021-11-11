@@ -2,18 +2,15 @@
 #include <Arduino.h>
 #include "EEPROM.h"
 #include "buzzer.h"
+#include "sensor_data.h"
 
 #define EEPROM_SIZE 255
 
-namespace arming
-{
-    bool isEnabled = 0;
+namespace arming {
+
     volatile bool timeKeeper = 0;
-    volatile int interruptCounter;
     hw_timer_t *timer = NULL;
     portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
-
-    unsigned long secondSwitchStart = 0;
 
     void IRAM_ATTR onTimer()
     {
@@ -22,26 +19,44 @@ namespace arming
         portEXIT_CRITICAL_ISR(&timerMux);
     }
 
+    //pin definitions
     int nihrom = 33;            //p20 OUTPUT
     int nihrom2 = 32;           //p19 OUTPUT
-    int ParachuteBattery1 = 34; //p18 INPUT
-    int ParachuteBattery2 = 35; //p17 INPUT
+    int ParachuteBattery1 = 35; //p17 INPUT
+    int ParachuteBattery2 = 34; //p18 INPUT
 
-    int USBcheck = 39;     //p14 INPUT
+    int FirstSwitch = 39;     //p14 INPUT
     int SecondSwitch = 38; //p16 INPUT
     int ThirdSwitch = 37;  //p15 INPUT
 
-    const int ParachutePower = 0; //!JADEFINĒ!
     const int LopyPower = 0;      //!JĀDEFINĒ!
     int out = 26;                 //p21 lampiņa/buzzer
+    int EEPROMclear = 2;       //p8 INPUT
 
     bool fail = 0;
     bool AlreadyCalibrated = 0;
-    int USBir = 0;
+    bool firstSwitchHasBeen = 0;
+
+    unsigned long secondSwitchStart = 0;
+    
+    //variables for Parachute battery voltage calculation
+    float rawVoltage = 0;
+    int rawReading = 0;
+    float sumVoltage1 = 0;
+    float sumVoltage2 = 0;
+    float voltage1 = 0;
+    float voltage2 = 0;
+    float filteredVoltage = 0;
+
+    //variables for Lopy battery voltage calculation
+    int FirstSwitchReading = 0;
+	int SecondSwitchReading = 0;
+	int ThirdSwitchReading = 0;
+    int rawReadingLopy = 0;
+
 
     void setup()
     {
-        // *NEW pin defining and settuping varetu ielikt setup funkcija AM wrapper
         pinMode(nihrom, OUTPUT);           //1. nihroma
         pinMode(nihrom2, OUTPUT);          // 2. nihromam
         pinMode(ParachuteBattery1, INPUT); //MOSFET shēmas baterijai
@@ -49,9 +64,10 @@ namespace arming
 
         pinMode(ThirdSwitch, INPUT);
         pinMode(SecondSwitch, INPUT);
-        pinMode(USBcheck, INPUT);
+        pinMode(FirstSwitch, INPUT);
 
         pinMode(out, OUTPUT); //? buzzer
+        pinMode(EEPROMclear, INPUT_PULLDOWN);
 
         //sak timeri
         timer = timerBegin(0, 80, true);
@@ -64,26 +80,60 @@ namespace arming
         Serial.println("Arming setup complete!");
     }
 
-    // bool isConnectedUSB()
-    // {
-    //     /*
-    //     parbauda vai ir usb rezims, vai ir pieslegta baterija (ja ir Low tad no baterijas nenak strava, jo nav izvilkts stienis 
-    //     (ja nav izvilkts stienis tad logiski lopy runo kodu no USB jo savadak nebutu strava) un nav pieslegta ari pati baterija)
-    //     */
-    //     //USB check principa ir pirmais sledzis
-    //     if (digitalRead(USBcheck) == LOW)
-    //     {
-    //         return 1; //USB pieslegts
-    //     }
-    //     elsez
-    //     {
-    //         return 0;
-    //     }
-    // }
+    float getBattery1Voltage()
+    {
+        static int readings = 0;
+        readings++;
+        rawReading = analogRead(ParachuteBattery1);
+        rawVoltage = (rawReading/320);
+        sumVoltage1 += rawVoltage;
+        voltage1 = sumVoltage1/readings;
+        return voltage1;
+    }
+
+    float getBattery2Voltage()
+    {
+        static int readings = 0;
+        readings++;
+        rawReading = analogRead(ParachuteBattery2);
+        rawVoltage = (rawReading/320);
+        sumVoltage2 += rawVoltage;
+        voltage2 = sumVoltage2/readings;
+        return voltage2;
+    }
+
+    float getLopyBatteryVoltage()
+    {
+        FirstSwitchReading = analogRead(FirstSwitch);
+	    SecondSwitchReading = analogRead(SecondSwitch);
+	    ThirdSwitchReading = analogRead(ThirdSwitch);
+        if(SecondSwitchReading != 0)
+	    {
+		    rawReadingLopy = SecondSwitchReading;
+	    }
+	    else
+	    {
+		    rawReadingLopy = ThirdSwitchReading;
+	    }
+
+        return rawReadingLopy / 620;
+    }
+
+    bool getParachuteBatteryStatus()
+    {
+        if(voltage1 > 8.1 && voltage2 > 8.1)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
 
     bool checkFirstSwitch()
     {
-        if (digitalRead(USBcheck) == HIGH)
+        if (analogRead(FirstSwitch) > 700)
         {
             return 1;
         }
@@ -95,7 +145,7 @@ namespace arming
 
     bool checkSecondSwitch()
     {
-        if (digitalRead(SecondSwitch) == HIGH)
+        if (analogRead(SecondSwitch) > 1000)
         {
             return 1;
         }
@@ -107,19 +157,31 @@ namespace arming
 
     bool checkThirdSwitch() //!changed
     {
-        if (digitalRead(ThirdSwitch) == LOW)
+        if (analogRead(ThirdSwitch) > 1000)
         {
-            return 0;
+            return 1;
         }
         else
         {
-            return 1;
+            return 0;
         }
     }
 
     bool armingSuccess()
     {
         if (AlreadyCalibrated == 1 && fail == 0)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    bool clearEEPROM()
+    {
+        if(digitalRead(EEPROMclear) == HIGH)
         {
             return 1;
         }
@@ -157,6 +219,15 @@ namespace arming
             buzzer::buzzEnd();
         //*
         }
+    }
+
+    sens_data::BatteryData getBatteryState()
+    {
+        sens_data::BatteryData BDat;
+        BDat.bs = getParachuteBatteryStatus();
+        BDat.bat1 = getBattery1Voltage();
+        BDat.bat2 = getBattery2Voltage();
+        return BDat;
     }
 
 }

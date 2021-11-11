@@ -1,67 +1,33 @@
 #pragma once
 #include <TinyGPS++.h>
-#include <SoftwareSerial.h>
 #include "sensor_data.h"
 #include "EEPROM.h"
 
-//*Fun error Sundays:
-//https://community.platformio.org/t/guru-meditation-error-core-1-paniced-cache-disabled-but-cached-memory-region-accessed/13214/6
-//https://github.com/plerup/espsoftwareserial/issues/156
-
-//*Fun fact Sundays:
-//You don't have to have the correct TXPIN as you ar enot writing to the gps - you only really need the RX pin to be right
-
-//*Possible solutions Tuesday's
-//https://githubmemory.com/repo/plerup/espsoftwareserial/issues/165
 
 namespace gps {
-    //for some reason when the correct pin definitions are set the lopy dies
-    #define RXPIN 4 //P4 on lopy is set to RX pin (important to remember about crossover connection)
-    #define TXPIN 15  //P3
-    SoftwareSerial gpsSerial;
-    SoftwareSerialConfig ssc = SWSERIAL_8N1; // 8bits-no_parity-1_stop_bit  https://github.com/plerup/espsoftwareserial/
-    TinyGPSPlus gps;
 
+    TinyGPSPlus gps;
     boolean hasData = false;
 
     sens_data::GpsData lastData;  //Last data so that values of zero don't get sent when gps doesn't have lock on
 
-
     void setup(uint gpsRate = 9600)
     {
-        gpsSerial.begin(gpsRate, ssc, RXPIN, TXPIN);
         Serial.println("Init GPS: " + String(gpsRate));
     }
 
     void readGps()
     {
         hasData = false;
-
-        while (gpsSerial.available())
+        while (Serial.available())
         {
-            gps.encode(gpsSerial.read());
+            gps.encode(Serial.read());
             hasData = true;
         }
-
-        // Serial.print("LAT=");
-        // Serial.println(gps.location.lat(), 6);
-        // Serial.print("LONG=");
-        // Serial.println(gps.location.lng(), 6);
-        // Serial.print("ALT=");
-        // Serial.println(gps.altitude.meters());
-    }
-
-    void killSerial()
-    {
-        gpsSerial.enableRx(0);
-    }
-    void reviveSerial()
-    {
-        gpsSerial.enableRx(1);
     }
 
     double lastLatitude() {
-        return gps.location.lat();  //TODO ar 6 skaitljiem?
+        return gps.location.lat(); 
     }
 
     double lastLongitude() {
@@ -72,10 +38,14 @@ namespace gps {
         return gps.altitude.meters();
     }
 
-
     int getSatellites()
     {
         return gps.satellites.value();
+    }
+
+    double getHdop()
+    {
+        return gps.hdop.hdop();
     }
 
     uint8_t getHour()
@@ -97,7 +67,7 @@ namespace gps {
     {
         Serial.println("Writing Second to EEPROM");
         float second = (float) getSecond();
-        Serial.print("Second!!!!!!:     ");
+        Serial.print("Second: ");
         Serial.println(second);
         EEPROM.writeFloat(28, second);
         EEPROM.commit();
@@ -105,9 +75,9 @@ namespace gps {
 
     void writeMinuteEEPROM()
     {
-        Serial.println("Writing Second to EEPROM");
+        Serial.println("Writing Minute to EEPROM");
         float minute = (float) getMinute();
-        Serial.print("Minute!!!!!!:     ");
+        Serial.print("Minute: ");
         Serial.println(minute);
         EEPROM.writeFloat(32, minute);
         EEPROM.commit();
@@ -128,7 +98,6 @@ namespace gps {
         return ((currentSecond + (currentMinute - getMinuteEEPROM()) * 60) - getSecondEEPROM()); //TODO test
     }
 
-
     sens_data::GpsData getGpsState()
     {
         sens_data::GpsData gd;
@@ -141,10 +110,12 @@ namespace gps {
             gd.lat = lastLatitude();
             gd.lng = lastLongitude();
             gd.alt = lastAltitude();
+            gd.sats = getSatellites();
             return gd;
         }
         else
         {
+            lastData.sats = getSatellites();
             return lastData;
         } 
     }

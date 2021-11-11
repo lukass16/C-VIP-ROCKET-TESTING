@@ -17,6 +17,7 @@ struct GpsData
     double lat = 0;
     double lng = 0;
     double alt = 0;
+    int sats = 0;
 };
 
 struct MagenetometerData 
@@ -24,7 +25,10 @@ struct MagenetometerData
     float x = 0;
     float y = 0;
     float z = 0;
-    float a = 0; // Acceleration
+    // Acceleration
+    float acc_x = 0;
+    float acc_y = 0;
+    float acc_z = 0;
 };
 
 struct BarometerData 
@@ -32,7 +36,14 @@ struct BarometerData
     float temperature = 0;
     float pressure = 0;
     float altitude = 0;
-    float vert_velocity = 0; //*NEW
+    float vert_velocity = 0;
+};
+
+struct BatteryData
+{
+    float bat1 = 0;
+    float bat2 = 0;
+    int bs = 0;
 };
 
 
@@ -43,6 +54,7 @@ class SensorData
         GpsData gpsData;
         MagenetometerData magnetometerData;
         BarometerData barometerData;
+        BatteryData batteryData;
         Mtx mtx;
     
     public:
@@ -73,7 +85,6 @@ class SensorData
             mtx.unlock();
             return gd;
         }
-
         void setGpsData(GpsData gd) 
         {
             mtx.lock();
@@ -88,11 +99,24 @@ class SensorData
             mtx.unlock();
             return bd;
         }
-
         void setBarometerData(BarometerData bd)
         {
             mtx.lock();
             barometerData = bd;
+            mtx.unlock();
+        }
+
+        BatteryData getBatteryData()
+        {
+            mtx.lock();
+            BatteryData btd = batteryData;
+            mtx.unlock();
+            return btd;
+        }
+        void setBatteryData(BatteryData btd)
+        {
+            mtx.lock();
+            batteryData = btd;
             mtx.unlock();
         }
 };
