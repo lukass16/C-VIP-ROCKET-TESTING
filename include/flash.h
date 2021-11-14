@@ -3,6 +3,7 @@
 #include "FS.h"
 #include <LITTLEFS.h>
 #include "sensor_data.h"
+#include "EEPROM.h"
 
 #define FORMAT_LITTLEFS_IF_FAILED true
 
@@ -67,6 +68,9 @@ struct StreamPipe
 
 namespace flash
 {
+
+    bool isLocked = 0; //is possibly changed in preparation state
+
     void setup()
     {
         if (!LITTLEFS.begin(FORMAT_LITTLEFS_IF_FAILED))
@@ -189,7 +193,7 @@ namespace flash
     }
 
 
-    void readFlash(const char *path)
+    void readFlashVerbose(const char *path)
     {
         File file = LITTLEFS.open(path);
         //This is the size of reading
@@ -279,6 +283,122 @@ namespace flash
 
         }
         file.close();
+    }
+
+    void readFlash(const char *path)
+    {
+        File file = LITTLEFS.open(path);
+        //This is the size of reading
+        auto const buf_size = sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float);   
+        while (file.available())
+        {
+            ; //! why?
+
+            StreamPipe<buf_size> stream;
+            file.readBytes(stream.buf_out, buf_size);
+ 
+
+            //Time
+            float time = 0;
+            stream.getValue<float>(&time);
+            Serial.print(String(time, 4) + ",");
+
+            //GPS
+            float lat = 0;
+            stream.getValue<float>(&lat);
+            Serial.print(String(lat, 4) + ",");
+
+            float lng = 0;
+            stream.getValue<float>(&lng);
+            Serial.print(String(lng, 4) + ",");
+
+            float alt = 0;
+            stream.getValue<float>(&alt);
+            Serial.print(String(alt, 4) + ",");
+
+            float sats = 0;
+            stream.getValue<float>(&sats);
+            Serial.print(String(sats, 4) + ",");
+
+            //Bar
+            float pressure = 0;
+            stream.getValue<float>(&pressure);
+            Serial.print(String(pressure, 4) + ",");
+
+            float altitude = 0;
+            stream.getValue<float>(&altitude);
+            Serial.print(String(altitude, 4) + ",");
+
+            float vert_velocity = 0;
+            stream.getValue<float>(&vert_velocity);
+            Serial.print(String(vert_velocity, 4) + ",");
+
+            float temperature = 0;
+            stream.getValue<float>(&temperature);
+            Serial.print(String(temperature, 4) + ",");
+
+            //Bat
+            float bat1 = 0;
+            stream.getValue<float>(&bat1);
+            Serial.print(String(bat1, 4) + ",");
+
+            float bat2 = 0;
+            stream.getValue<float>(&bat2);
+            Serial.print(String(bat2, 4) + ",");
+            
+            //Mag
+            float x = 0;
+            stream.getValue<float>(&x);
+            Serial.print(String(x, 4) + ",");
+
+            float y = 0;
+            stream.getValue<float>(&y);
+            Serial.print(String(y, 4) + ",");
+
+            float z = 0;
+            stream.getValue<float>(&z);
+            Serial.print(String(z, 4) + ",");
+
+            float acc_x = 0;
+            stream.getValue<float>(&acc_x);
+            Serial.print(String(acc_x, 4) + ",");
+            
+            float acc_y = 0;
+            stream.getValue<float>(&acc_y);
+            Serial.print(String(acc_y, 4) + ",");
+            
+            float acc_z = 0;
+            stream.getValue<float>(&acc_z);
+            Serial.println(String(acc_z, 4));
+
+
+        }
+        file.close();
+    }
+
+    void lock()
+    {
+        Serial.println("Flash locked");
+        EEPROM.writeFloat(40, 5); //5 chosen as arbitrary value in case this address is used for more fucntionality (file names)
+        EEPROM.commit();
+    }
+
+    void unlock()
+    {
+        Serial.println("Flash unlocked");
+        EEPROM.writeFloat(40, 0);
+        EEPROM.commit();
+    }
+
+    bool locked()
+    {
+        if (EEPROM.readFloat(40) == 5)
+        {
+            Serial.println("Cannot write to flash - locked");
+            isLocked = 1;
+            return 1;
+        }
+        else {return 0;}
     }
 
     void closeFile(File file)

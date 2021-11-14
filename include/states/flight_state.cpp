@@ -54,7 +54,7 @@ class FlightState : public State {
 
             while (true)
             {
-                buzzer::signalThirdSwitch();
+                //buzzer::signalThirdSwitch();
                 // //While apogee isn't reached and the timer isn't yet enabled the rocket checks for launch to enable the timer - the checking of launch has no other functionality
                 // if (!timerEnabled)
                 // {

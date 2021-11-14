@@ -51,7 +51,9 @@ class PreperationState: public State {
 
             buzzer::setup();
             buzzer::signalStart();
-            //flash::setup();
+            flash::setup();
+            flash::unlock();
+            flash::readFlash("/test.txt");
             //flash::deleteFile("/test.txt"); //!if is reset mid-flight file gets deleted
             gps::setup(9600);            
             barometer::setup();
