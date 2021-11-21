@@ -37,8 +37,8 @@ class PreperationState: public State {
             if(executions % 700 == 0)
             {
                 //Print necessary info during preperation state
-                Serial.println("Lopy Battery Voltage: " + String(arming::getLopyBatteryVoltage()) + "V Parachute Battery 1 Voltage: " + String(arming::getBattery1Voltage()) + "V  Parachute Battery 2 Voltage: " + String(arming::getBattery2Voltage()) + "V");
-                Serial.println("GPS satellites: " + String(gd.sats));
+                Serial.print("FCB: " + String(arming::getLopyBatteryVoltage()) + "V\tPB 1: " + String(arming::getBattery1Voltage()) + "V\tPB 2: " + String(arming::getBattery2Voltage()) + "V");
+                Serial.println("\tGPS sats: " + String(gd.sats));
             }
             executions++;
         }
@@ -46,32 +46,30 @@ class PreperationState: public State {
         void start () override {
             Serial.println("PREP STATE");
 
-            arming::setup();
-            Wire.begin(12, 13);
-
             buzzer::setup();
             buzzer::signalStart();
-            flash::setup();
-            flash::unlock();
-            flash::readFlash("/test.txt");
-            //flash::deleteFile("/test.txt"); //!if is reset mid-flight file gets deleted
-            gps::setup(9600);            
-            barometer::setup();
-            //magnetometer::setup();
-            comms::setup(868E6);
+            arming::setup();
 
-            this->_context->RequestNextPhase(); //! Transition to flight state
-            this->_context->Start();
+            Wire.begin(12, 13);
+            flash::setup();
+            //flash::readFlash("/test.txt"); //!testing
+            gps::setup(9600);
+            barometer::setup();
+            buzzer::buzzEnd(); //?end start signal
+            magnetometer::setup();
+            comms::setup(868E6);
 
             if(arming::clearEEPROM()) //checks EEPROM clear jumper
             {
                 magnetometer::clearEEPROM();
+                flash::unlock();
             }
+            if(!flash::locked()){flash::deleteFile("/test.txt");} //if file is done writing to don't rewrite it
             magnetometer::getCorEEPROM();
-            magnetometer::displayCor();
 
             if(magnetometer::hasBeenLaunch())
             {
+                magnetometer::arm();
                 this->_context->RequestNextPhase(); //! Transition to flight state
                 this->_context->Start();
             }

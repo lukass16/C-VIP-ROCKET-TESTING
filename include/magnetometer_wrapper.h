@@ -6,6 +6,8 @@
 #include "sensor_data.h"
 #include "EEPROM.h"
 
+//note: this wrapper also includes the EEPROM functionality
+
 namespace magnetometer {
     
     // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
@@ -63,8 +65,11 @@ namespace magnetometer {
     float gyr_x = 0, gyr_y = 0, gyr_z = 0;
 
     //creating variables for timer and launch
-    float detAcc = 0;
+    float detAcc = 15;
     int countAcc = 0;
+
+    //creating variables for apogee detection protection
+    bool armed = 0;
 
     //creating a variable for timer detection of apogee
     volatile bool timerDetAp = 0;
@@ -310,7 +315,14 @@ namespace magnetometer {
 
     boolean isApogee(float field_val = cor_y)
     {
-        return field_val <= 10;
+        if(!armed)
+        {
+            return 0;
+        }
+        else
+        {
+            return field_val <= 10;
+        }
     }
 
     double getAngle() {
@@ -454,6 +466,11 @@ namespace magnetometer {
         {
             buzzer::buzz(3400);
         }
+    }
+
+    void arm()
+    {
+        armed = 1;
     }
 
     void readMagnetometer()

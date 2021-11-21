@@ -69,8 +69,6 @@ struct StreamPipe
 namespace flash
 {
 
-    bool isLocked = 0; //is possibly changed in preparation state
-
     void setup()
     {
         if (!LITTLEFS.begin(FORMAT_LITTLEFS_IF_FAILED))
@@ -394,8 +392,7 @@ namespace flash
     {
         if (EEPROM.readFloat(40) == 5)
         {
-            Serial.println("Cannot write to flash - locked");
-            isLocked = 1;
+            Serial.println("Cannot delete flash - locked");
             return 1;
         }
         else {return 0;}

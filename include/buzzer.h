@@ -5,7 +5,15 @@
 
 namespace buzzer
 {
-
+    /*
+     __         __
+/  \.-"""-./  \
+\    -   -    /
+ |   o   o   |
+ \  .-'''-.  /
+  '-\__Y__/-'
+     `---`
+    */
     //declaring a variable for the piezo pin
     int piezo_pin = 21;
 
@@ -48,13 +56,7 @@ namespace buzzer
 
     void signalStart()
     {
-        buzzer::buzz(450);
-        delay(250);
-        buzzer::buzz(680);
-        delay(250);
         buzzer::buzz(860);
-        delay(500);
-        buzzer::buzzEnd();
     }
 
     void signalCalibrationStart()

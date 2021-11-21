@@ -16,20 +16,19 @@ namespace comms
     void setup(double frequency = 868E6)
     {
         lora::setup(frequency);
-        Serial.println("LoRa initialized!");
-        s_thread::setup(loop);
-        
+        s_thread::setup(loop);  
     }
 
     // This is ran in a seperate thread
     void loop(void *args = NULL)
     {
+        Serial.println("Thread initialized!");
         // Send lora every 0.4 secs
         while (true)
         {
             String serialized = comms::serializeData();
             lora::sendMessage(serialized, s_data.lora_message_id);
-            Serial.print("Lora (msg id: ");
+            Serial.print("Lora (msg id: ");  //!commented out for testing
             Serial.print(s_data.lora_message_id);
             Serial.print(") sent: ");
             Serial.println(serialized);

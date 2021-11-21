@@ -21,7 +21,7 @@ namespace arming {
 
     //pin definitions
     int nihrom = 33;            //p20 OUTPUT
-    int nihrom2 = 32;           //p19 OUTPUT
+    int nihrom2 = 25;           //p19 OUTPUT
     int ParachuteBattery1 = 35; //p17 INPUT
     int ParachuteBattery2 = 34; //p18 INPUT
 
@@ -82,24 +82,26 @@ namespace arming {
 
     float getBattery1Voltage()
     {
-        static int readings = 0;
-        readings++;
+        //static int readings = 0;
+        //readings++;
         rawReading = analogRead(ParachuteBattery1);
-        rawVoltage = (rawReading/320);
-        sumVoltage1 += rawVoltage;
-        voltage1 = sumVoltage1/readings;
-        return voltage1;
+        rawVoltage = (rawReading/320.0);
+        //sumVoltage1 += rawVoltage;
+        //voltage1 = sumVoltage1/readings;
+        //return voltage1;
+        return rawVoltage;
     }
 
     float getBattery2Voltage()
     {
-        static int readings = 0;
-        readings++;
+        // static int readings = 0;
+        // readings++;
         rawReading = analogRead(ParachuteBattery2);
-        rawVoltage = (rawReading/320);
-        sumVoltage2 += rawVoltage;
-        voltage2 = sumVoltage2/readings;
-        return voltage2;
+        rawVoltage = (rawReading/320.0); //!fix int/int
+        // sumVoltage2 += rawVoltage;
+        // voltage2 = sumVoltage2/readings;
+        // return voltage2;
+        return rawVoltage;
     }
 
     float getLopyBatteryVoltage()
@@ -116,7 +118,7 @@ namespace arming {
 		    rawReadingLopy = ThirdSwitchReading;
 	    }
 
-        return rawReadingLopy / 620;
+        return rawReadingLopy / 620.0;
     }
 
     bool getParachuteBatteryStatus()
@@ -191,14 +193,18 @@ namespace arming {
         }
     }
 
+    void nihromDisable()
+    {
+        digitalWrite(nihrom, LOW);
+        digitalWrite(nihrom2, LOW);
+    }
+
     void nihromActivate()
     {
-        //* jaizskata nihrom activation - apogee detection
-        //if (APOGY==DETECTED){
-        //digitalWrite(nihrom, HIGH); //pirmais nihroms //!commented out for testing   
+        digitalWrite(nihrom, HIGH); //pirmais nihroms //? commented out for testing   
         Serial.println("First Nihrom activated");
         buzzer::buzz(3400);             
-                                    //*POSSIBLE PROBLEM WITH TIMER INTERRUPT - SHOULD USE DIFFERENT INTERRUPT HANDLING FUNCTION (otherwise when checking timeKeeper it's already 1)
+                                    //!POSSIBLE PROBLEM WITH TIMER INTERRUPT - SHOULD USE DIFFERENT INTERRUPT HANDLING FUNCTION (otherwise when checking timeKeeper it's already 1)
         timer = timerBegin(0, 80, true);
         timerAttachInterrupt(timer, &onTimer, true);
         timerAlarmWrite(timer, 1000000, false); //1sek
@@ -212,7 +218,7 @@ namespace arming {
         if (timeKeeper)
         {
             Serial.println("Second Nihrom activated"); 
-            //digitalWrite(nihrom2, HIGH); //otrais nihroms //!commented out for testing
+            digitalWrite(nihrom2, HIGH); //otrais nihroms //? commented out for testing
             buzzer::buzz(3400);
             //*testing
             delay(200); 

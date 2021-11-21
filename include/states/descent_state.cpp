@@ -20,6 +20,7 @@ class DescentState : public State {
             unsigned long start_time_descent = millis();
             int descent_write_time = 10000; //ms
             bool file_closed = 0;
+            arming::nihromDisable(); //!this is for tests and should not be in the final version
             File file = flash::openFile();
 
             while (true)
@@ -55,7 +56,7 @@ class DescentState : public State {
                 else if(!file_closed)
                 {
                     flash::closeFile(file); //closing flash file
-                    flash::readFlash("/test.txt");
+                    flash::readFlash("/test.txt"); //!testing
                     Serial.println("Flash data file closed");
                     file_closed = 1;
                 }  
