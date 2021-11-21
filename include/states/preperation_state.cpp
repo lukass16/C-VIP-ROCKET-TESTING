@@ -14,17 +14,17 @@
 
 class PreperationState: public State {
     public: 
-
+        sens_data::GpsData gd;
         void extractData() {
             static int executions = 0;
 
             // GPS
             gps::readGps();
-            sens_data::GpsData gd;
             if (gps::hasData)
             {
                 gd = gps::getGpsState();
                 s_data.setGpsData(gd);
+                //Serial.println("Sats: " + String(gd.sats));
             }
             // MAGNETOMETER
             magnetometer::readMagnetometer();
@@ -91,8 +91,6 @@ class PreperationState: public State {
             while(!arming::armingSuccess() && !magnetometer::savedCorToEEPROM())
             {
                 extractData(); //give Data to LoRa for sending and print necessary data in Serial
-                //for testing
-                flash::printTime();
                 if(!arming::checkFirstSwitch() && !arming::firstSwitchHasBeen)
                 {
                     buzzer::buzz(1080);
@@ -127,7 +125,7 @@ class PreperationState: public State {
             magnetometer::displayCor();
 
             //permanent loop while not pulled third switch
-            while(!arming::checkSecondSwitch() || arming::checkThirdSwitch()) {extractData();flash::printTime();Serial.println("waiting for third switch");}
+            while(!arming::checkSecondSwitch() || arming::checkThirdSwitch()) {extractData();Serial.println("waiting for third switch");}
             this->_context->RequestNextPhase();
             this->_context->Start();
            
