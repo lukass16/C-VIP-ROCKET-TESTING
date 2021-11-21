@@ -28,6 +28,7 @@ class DescentState : public State {
             while (true)
             {
                 buzzer::signalDescent();
+                arming::nihromActivateSecond();
 
                 // GPS
                 gps::readGps();

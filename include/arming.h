@@ -6,11 +6,15 @@
 
 #define EEPROM_SIZE 255
 
-namespace arming {
+//! the same handling function assesses the arming timer of th switch ebing pulled too fast and the second nihrom activation - this should be fixed
+
+namespace arming
+{
 
     volatile bool timeKeeper = 0;
     hw_timer_t *timer = NULL;
     portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
+    bool secondNihromActivated = 0;
 
     void IRAM_ATTR onTimer()
     {
@@ -25,20 +29,20 @@ namespace arming {
     int ParachuteBattery1 = 35; //p17 INPUT
     int ParachuteBattery2 = 34; //p18 INPUT
 
-    int FirstSwitch = 39;     //p14 INPUT
+    int FirstSwitch = 39;  //p14 INPUT
     int SecondSwitch = 38; //p16 INPUT
     int ThirdSwitch = 37;  //p15 INPUT
 
-    const int LopyPower = 0;      //!JĀDEFINĒ!
-    int out = 26;                 //p21 lampiņa/buzzer
-    int EEPROMclear = 2;       //p8 INPUT
+    const int LopyPower = 0; //!JĀDEFINĒ!
+    int out = 26;            //p21 lampiņa/buzzer
+    int EEPROMclear = 2;     //p8 INPUT
 
     bool fail = 0;
     bool AlreadyCalibrated = 0;
     bool firstSwitchHasBeen = 0;
 
     unsigned long secondSwitchStart = 0;
-    
+
     //variables for Parachute battery voltage calculation
     float rawVoltage = 0;
     int rawReading = 0;
@@ -50,10 +54,9 @@ namespace arming {
 
     //variables for Lopy battery voltage calculation
     int FirstSwitchReading = 0;
-	int SecondSwitchReading = 0;
-	int ThirdSwitchReading = 0;
+    int SecondSwitchReading = 0;
+    int ThirdSwitchReading = 0;
     int rawReadingLopy = 0;
-
 
     void setup()
     {
@@ -85,7 +88,7 @@ namespace arming {
         //static int readings = 0;
         //readings++;
         rawReading = analogRead(ParachuteBattery1);
-        rawVoltage = (rawReading/320.0);
+        rawVoltage = (rawReading / 320.0);
         //sumVoltage1 += rawVoltage;
         //voltage1 = sumVoltage1/readings;
         //return voltage1;
@@ -97,7 +100,7 @@ namespace arming {
         // static int readings = 0;
         // readings++;
         rawReading = analogRead(ParachuteBattery2);
-        rawVoltage = (rawReading/320.0); //!fix int/int
+        rawVoltage = (rawReading / 320.0); //!fix int/int
         // sumVoltage2 += rawVoltage;
         // voltage2 = sumVoltage2/readings;
         // return voltage2;
@@ -107,23 +110,23 @@ namespace arming {
     float getLopyBatteryVoltage()
     {
         FirstSwitchReading = analogRead(FirstSwitch);
-	    SecondSwitchReading = analogRead(SecondSwitch);
-	    ThirdSwitchReading = analogRead(ThirdSwitch);
-        if(SecondSwitchReading != 0)
-	    {
-		    rawReadingLopy = SecondSwitchReading;
-	    }
-	    else
-	    {
-		    rawReadingLopy = ThirdSwitchReading;
-	    }
+        SecondSwitchReading = analogRead(SecondSwitch);
+        ThirdSwitchReading = analogRead(ThirdSwitch);
+        if (SecondSwitchReading != 0)
+        {
+            rawReadingLopy = SecondSwitchReading;
+        }
+        else
+        {
+            rawReadingLopy = ThirdSwitchReading;
+        }
 
         return rawReadingLopy / 620.0;
     }
 
     bool getParachuteBatteryStatus()
     {
-        if(voltage1 > 8.1 && voltage2 > 8.1)
+        if (voltage1 > 8.1 && voltage2 > 8.1)
         {
             return 1;
         }
@@ -183,7 +186,7 @@ namespace arming {
 
     bool clearEEPROM()
     {
-        if(digitalRead(EEPROMclear) == HIGH)
+        if (digitalRead(EEPROMclear) == HIGH)
         {
             return 1;
         }
@@ -201,29 +204,23 @@ namespace arming {
 
     void nihromActivate()
     {
-        digitalWrite(nihrom, HIGH); //pirmais nihroms //? commented out for testing   
+        digitalWrite(nihrom, HIGH); //pirmais nihroms //? commented out for testing
         Serial.println("First Nihrom activated");
-        buzzer::buzz(3400);             
-                                    //!POSSIBLE PROBLEM WITH TIMER INTERRUPT - SHOULD USE DIFFERENT INTERRUPT HANDLING FUNCTION (otherwise when checking timeKeeper it's already 1)
+        buzzer::buzz(3400);
+        //!POSSIBLE PROBLEM WITH TIMER INTERRUPT - SHOULD USE DIFFERENT INTERRUPT HANDLING FUNCTION (otherwise when checking timeKeeper it's already 1)
         timer = timerBegin(0, 80, true);
         timerAttachInterrupt(timer, &onTimer, true);
-        timerAlarmWrite(timer, 1000000, false); //1sek
+        timerAlarmWrite(timer, 5000000, false); //!5sek for testing
         timerAlarmEnable(timer);
+    }
 
-        //*testing
-        delay(200); 
-        buzzer::buzzEnd();
-        //*
-
-        if (timeKeeper)
+    void nihromActivateSecond()
+    {
+        if(timeKeeper && !secondNihromActivated)
         {
-            Serial.println("Second Nihrom activated"); 
+            Serial.println("Second Nihrom activated");
             digitalWrite(nihrom2, HIGH); //otrais nihroms //? commented out for testing
-            buzzer::buzz(3400);
-            //*testing
-            delay(200); 
-            buzzer::buzzEnd();
-        //*
+            secondNihromActivated = 1;
         }
     }
 

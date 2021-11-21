@@ -1,5 +1,6 @@
 #pragma once
 #include <Adafruit_BMP280.h>
+#include "sensor_data.h"
 
 Adafruit_BMP280 bmp; // I2C Interface
 
@@ -106,6 +107,15 @@ namespace barometer {
             prevTime = nowTime;
         }
         
+    }
+
+    sens_data::BarometerData getBarometerState(){
+        sens_data::BarometerData bd;
+        bd.temperature = bmp.readTemperature();
+        bd.pressure = bmp.readPressure() / 100;
+        bd.altitude = bmp.readAltitude(sea_level_read);
+        bd.vert_velocity = getVertVelocity();
+        return bd;
     }
 
     void readSensor() {
