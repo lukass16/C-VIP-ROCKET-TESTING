@@ -10,7 +10,8 @@
 //*If rocket resets flash is not closed and the values essentially don't get saved - maybe every couple of seconds the flash is closed and opened
 //*If rocket resets the main flash file gets overwritten - the code should be able to tell if rocket has reset and to treat the flash appropriately
 
-unsigned long flash_time = millis();
+unsigned long flash_start_time = millis();
+float prevTime = 0, nowTime = 0; //for testing
 
 //to simplify the usage of the Flash header declared a different function - deleteFile - this serves as it's basis
 void delete_File(fs::FS &fs, const char *path)
@@ -93,7 +94,7 @@ namespace flash
 
     float getTimeElapsed() //*Check overflow
     {
-        return millis()-flash_time;
+        return millis()-flash_start_time;
     }
 
     void testFileIO(File file, int multiplier)
@@ -122,8 +123,11 @@ namespace flash
     }
 
     //should still add a lot of writeable information: https://docs.google.com/document/d/1jWQnLnQJqiII_0ii84CKXIUmW_RAO8ebAFO_XuiE9oU/edit
-    void writeData(File file, sens_data::GpsData gpsData, sens_data::MagenetometerData magData, sens_data::BarometerData barData, sens_data::BatteryData batData)
+    int writeData(File file, sens_data::GpsData gpsData, sens_data::MagenetometerData magData, sens_data::BarometerData barData, sens_data::BatteryData batData)
     {
+        //counter for closing and opening file
+        static int counter;
+
         //Flash timing
         float _time = flash::getTimeElapsed();
         auto time = (uint8_t *)(&_time);
@@ -185,9 +189,12 @@ namespace flash
         if (!file)
         {
             Serial.println("- failed to open file for writing");
-            return;
+            return 0;
         }
         file.write(buffer.buf, buf_size);
+
+        counter++;
+        return counter;
     }
 
 
@@ -396,6 +403,18 @@ namespace flash
             return 1;
         }
         else {return 0;}
+    }
+
+    //for testing purposes
+    void printTime()
+    {
+        nowTime = getTimeElapsed();
+        if(prevTime + 1000 < nowTime)
+        {
+            Serial.println("Flash time: " + String(nowTime));
+            prevTime = nowTime;
+        }
+        
     }
 
     void closeFile(File file)

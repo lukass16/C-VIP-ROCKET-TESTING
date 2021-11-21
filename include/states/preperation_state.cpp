@@ -91,6 +91,8 @@ class PreperationState: public State {
             while(!arming::armingSuccess() && !magnetometer::savedCorToEEPROM())
             {
                 extractData(); //give Data to LoRa for sending and print necessary data in Serial
+                //for testing
+                flash::printTime();
                 if(!arming::checkFirstSwitch() && !arming::firstSwitchHasBeen)
                 {
                     buzzer::buzz(1080);
@@ -106,6 +108,7 @@ class PreperationState: public State {
                 else if(arming::checkSecondSwitch() && arming::checkThirdSwitch()) //ja ir izvilkts slēdzis 
                 {
                     buzzer::signalSecondSwitch();
+                    Serial.println("Confirming values");
                     if(millis() - arming::secondSwitchStart > 10000) //un ja pagājis vairāk kā noteiktais intervāls
                     {
                         arming::AlreadyCalibrated = 1;
@@ -124,7 +127,7 @@ class PreperationState: public State {
             magnetometer::displayCor();
 
             //permanent loop while not pulled third switch
-            while(!arming::checkSecondSwitch() || arming::checkThirdSwitch()) {extractData();}
+            while(!arming::checkSecondSwitch() || arming::checkThirdSwitch()) {extractData();flash::printTime();Serial.println("waiting for third switch");}
             this->_context->RequestNextPhase();
             this->_context->Start();
            

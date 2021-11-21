@@ -19,12 +19,14 @@ class DescentState : public State {
 
             unsigned long start_time_descent = millis();
             int descent_write_time = 10000; //ms
+            int flash_counter = 0;
             bool file_closed = 0;
             arming::nihromDisable(); //!this is for tests and should not be in the final version
             File file = flash::openFile();
 
             while (true)
             {
+                flash::printTime(); //for testing
                 buzzer::signalDescent();
 
                 // GPS
@@ -51,7 +53,9 @@ class DescentState : public State {
 
                 if(millis() - start_time_descent < descent_write_time)
                 {
-                    flash::writeData(file, gd, md, bd, btd); //writing data to flash memory
+                    flash_counter = flash::writeData(file, gd, md, bd, btd); //writing data to flash memory
+                    if(flash_counter % 100 == 0){flash::closeFile(file);file=flash::openFile();} //close and open the file every 100th reading
+                    //Serial.println("Counter: " + String(flash_counter)); //!for testing
                 }
                 else if(!file_closed)
                 {

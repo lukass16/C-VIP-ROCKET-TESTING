@@ -65,7 +65,7 @@ namespace magnetometer {
     float gyr_x = 0, gyr_y = 0, gyr_z = 0;
 
     //creating variables for timer and launch
-    float detAcc = 15;
+    float detAcc = 1;
     int countAcc = 0;
 
     //creating variables for apogee detection protection

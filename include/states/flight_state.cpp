@@ -14,6 +14,7 @@ class FlightState : public State {
     private:
         volatile bool timerDetAp = 0;
         bool timerEnabled = 0;
+        int flash_counter = 0;
 
         int magcount = 0;
         boolean isApogee()
@@ -54,6 +55,7 @@ class FlightState : public State {
 
             while (!isApogee())
             {
+                flash::printTime(); //for testing
                 buzzer::signalThirdSwitch();
                 //While apogee isn't reached and the timer isn't yet enabled the rocket checks for launch to enable the timer - the checking of launch has no other functionality
                 if (!timerEnabled)
@@ -94,8 +96,11 @@ class FlightState : public State {
 
                 if(start_writing)
                 {
-                    flash::writeData(file, gd, md, bd, btd); //writing data to flash memory
+                    flash_counter = flash::writeData(file, gd, md, bd, btd); //writing data to flash memory
+                    if(flash_counter % 100 == 0){flash::closeFile(file);file=flash::openFile();} //close and open the file every 100th reading
+                    //Serial.println("Counter: " + String(flash_counter)); //!for testing
                 }
+                //delay(100); //!remove in real test
                 
             }
             Serial.println("APOGEE DETECTED !!!");
