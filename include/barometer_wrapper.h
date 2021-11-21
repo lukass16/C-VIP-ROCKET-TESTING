@@ -1,16 +1,18 @@
 #pragma once
 #include <Adafruit_BMP280.h>
-#include "sensor_data.h"
 
 Adafruit_BMP280 bmp; // I2C Interface
 
 namespace barometer {
     const float SEA_LEVEL = 1019.66;
-    float sea_level_read = 1019.66;
+    float sea_level_read = 0;
 
-    unsigned long t = millis(); //for some reason it VSCode doesn't like declaring this variable as time (I chose t)
+    unsigned long lt_now = 0, lt_prev = millis(), nowTime = 0, prevTime = 0; //for some reason it VSCode doesn't like declaring this variable as time (I chose t)
     unsigned long prev_time;
-    float prev_height, height, vert_velocity;
+    float prev_height, height, vert_velocity, vert_velocity_prev = 0;
+
+    double dt = 0, dh = 0, h_now = 0, h_prev= 0, nowVelocity = 0;
+    float t_now = 0, t_prev = 0;
 
     float getVertVelocity();
 
@@ -29,7 +31,7 @@ namespace barometer {
                     Adafruit_BMP280::STANDBY_MS_500); /* Standby time. */
         if (read_sea_level) {
             for(int i=0; i<5; i++){
-                sea_level_read+=read_sea_level;
+                sea_level_read+=(bmp.readPressure()/100);
             }
             sea_level_read = sea_level_read / 5;
         }
@@ -40,25 +42,70 @@ namespace barometer {
         Serial.println("Barometer ready! Sea level pressure: " + String(sea_level_read));
     }
 
-    sens_data::BarometerData getBarometerState(){
-        sens_data::BarometerData bd;
-        bd.temperature = bmp.readTemperature();
-        bd.pressure = bmp.readPressure() / 100;
-        bd.altitude = bmp.readAltitude(sea_level_read);
-        bd.vert_velocity = getVertVelocity();
-        return bd;
+    float getArtificialHeight(float interval)
+    {
+        static int counter = 0;
+        counter++;
+        return counter*interval;
+    }
+
+    float getArtificialVertVelocity()
+    {
+        
+        static int counter = 0;
+        counter++;
+        h_now = getArtificialHeight(0.07); //in m (real: //h_now = bmp.readAltitude(1019.66);) //maybe for real code this can be put inside if statement
+        t_now = millis() / 1000.0; //in ms
+        //t_now = lt_now / 1000.0; //in s
+        if(counter % 1 == 0) //every 7th call
+        {
+            dt = t_now - t_prev;
+            Serial.println("Time: " + String(dt, 5));
+            // Serial.println("T_now: " + String(t_now, 5));
+            // Serial.println("T_prev: " + String(t_prev, 5));
+            dh = h_now - h_prev;
+            vert_velocity = dh/dt;
+            //reverting values
+            h_prev = h_now;
+            t_prev = t_now;
+            vert_velocity_prev = vert_velocity;
+            delay(307);
+            return vert_velocity;
+        }
+        else {delay(300);return vert_velocity_prev;}
     }
 
     float getVertVelocity()
     {
-        t = millis(); //in seconds
+        static int counter = 0;
+        counter++;
+        h_now = bmp.readAltitude(sea_level_read); //in m
+        t_now = millis() / 1000.0; //in ms
+        if(counter % 3 == 0) //every 3rd call
+        {
+            dt = t_now - t_prev;
+            dh = h_now - h_prev;
+            vert_velocity = dh/dt;
+            //reverting values
+            h_prev = h_now;
+            t_prev = t_now;
+            vert_velocity_prev = vert_velocity;
+            return vert_velocity;
+        }
+        else {return vert_velocity_prev;}
+    }
 
-        height = bmp.readAltitude(1019.66);
-        vert_velocity = ((height - prev_height) * 1000) / (t - prev_time); //we multiply by 1000 because we divide by milliseconds
-        prev_height = height;
-        prev_time = t;
-
-        return vert_velocity;
+    void printVelocity()
+    {
+        nowTime = millis();
+        nowVelocity = getVertVelocity();
+        if(prevTime + 1000 < nowTime)
+        {
+            Serial.println("Height: " + String(bmp.readAltitude(sea_level_read)));
+            Serial.println("Velocity: " + String(nowVelocity) + "\n");
+            prevTime = nowTime;
+        }
+        
     }
 
     void readSensor() {
