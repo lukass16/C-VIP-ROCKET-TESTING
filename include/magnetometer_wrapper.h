@@ -8,8 +8,9 @@
 
 //note: this wrapper also includes the EEPROM functionality
 
-namespace magnetometer {
-    
+namespace magnetometer
+{
+
     // an MPU9250 object with the MPU-9250 sensor on I2C bus 0 with address 0x68
     MPU9250 IMU(Wire, 0x68);
     int status;
@@ -103,6 +104,21 @@ namespace magnetometer {
             return 1;
         }
         return 0;
+    }
+
+    void calibrateAccelerometer()
+    {
+
+        buzzer::signalCalibrationStart();
+        IMU.calibrateAccel();
+        /* returns the accelerometer bias in the X direction, m/s/s */
+        Serial.println("AccelBiasX: " + String(IMU.getAccelBiasX_mss()));
+        Serial.println("ScaleFactorX: " + String(IMU.getAccelScaleFactorX()));
+        Serial.println("AccelBiasY: " + String(IMU.getAccelBiasY_mss()));
+        Serial.println("AccelScaleFactorY: " + String(IMU.getAccelScaleFactorY()));
+        Serial.println("AccelBiasZ: " + String(IMU.getAccelBiasZ_mss()));
+        Serial.println("AccelScaleFactorZ: " + String(IMU.getAccelScaleFactorZ()));
+        buzzer::signalCalibrationEnd();
     }
 
     void startApogeeTimer(int timerLength)
@@ -315,7 +331,7 @@ namespace magnetometer {
 
     boolean isApogee(float field_val = cor_y)
     {
-        if(!armed)
+        if (!armed)
         {
             return 0;
         }
@@ -325,8 +341,9 @@ namespace magnetometer {
         }
     }
 
-    double getAngle() {
-        return atan(sqrt(pow(IMU.getAccelX_mss(), 2) + pow(IMU.getAccelZ_mss(), 2) ) / IMU.getAccelY_mss())*57.2958;
+    double getAngle()
+    {
+        return atan(sqrt(pow(IMU.getAccelX_mss(), 2) + pow(IMU.getAccelZ_mss(), 2)) / IMU.getAccelY_mss()) * 57.2958;
     }
 
     void printCalibratingValues()

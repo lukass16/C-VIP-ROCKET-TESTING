@@ -52,12 +52,20 @@ class PreperationState: public State {
 
             Wire.begin(12, 13);
             flash::setup();
-            //flash::readFlash("/test.txt"); //!testing
             gps::setup(9600);
             barometer::setup();
-            buzzer::buzzEnd(); //?end start signal
+            buzzer::buzzEnd(); 
             magnetometer::setup();
             comms::setup(868E6);
+
+            magnetometer::calibrateAccelerometer();
+
+            while(true)
+            {
+                magnetometer::readMagnetometer();
+                magnetometer::displayAcceleration();
+                delay(1000);
+            }
 
             if(arming::clearEEPROM()) //checks EEPROM clear jumper
             {
