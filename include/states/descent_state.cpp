@@ -18,17 +18,19 @@ class DescentState : public State {
             Serial.println("DESCENT STATE");
 
             unsigned long start_time_descent = millis();
-            int descent_write_time = 10000; //ms
+            int descent_write_time = 180000; //ms
             int flash_counter = 0;
             bool file_closed = 0;
             sens_data::GpsData gd;
-            arming::nihromDisable(); //!this is for tests and should not be in the final version
             File file = flash::openFile();
 
             while (true)
             {
-                buzzer::signalDescent();
+                //activate nihroms
+                arming::nihromActivateFirst();
                 arming::nihromActivateSecond();
+                
+                buzzer::signalDescent();
 
                 // GPS
                 gps::readGps();
@@ -53,14 +55,13 @@ class DescentState : public State {
 
                 if(millis() - start_time_descent < descent_write_time)
                 {
-                    flash_counter = flash::writeData(file, gd, md, bd, btd); //writing data to flash memory
-                    if(flash_counter % 100 == 0){flash::closeFile(file);file=flash::openFile();} //close and open the file every 100th reading
-                    //Serial.println("Counter: " + String(flash_counter)); //!for testing
+                    if(flash_counter % 2 == 0){flash::writeData(file, gd, md, bd, btd);} //writing data to flash memory every second iteration
+                    flash_counter++;
+                    if(flash_counter % 100 == 1){flash::closeFile(file);file=flash::openFile();} //close and open the file every 100th iteration
                 }
                 else if(!file_closed)
                 {
                     flash::closeFile(file); //closing flash file
-                    flash::readFlash("/test.txt"); //!testing
                     Serial.println("Flash data file closed");
                     file_closed = 1;
                 }  

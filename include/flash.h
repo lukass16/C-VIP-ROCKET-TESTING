@@ -7,11 +7,7 @@
 
 #define FORMAT_LITTLEFS_IF_FAILED true
 
-//*If rocket resets flash is not closed and the values essentially don't get saved - maybe every couple of seconds the flash is closed and opened
-//*If rocket resets the main flash file gets overwritten - the code should be able to tell if rocket has reset and to treat the flash appropriately
-
-unsigned long flash_start_time = millis();
-float prevTime = 0, nowTime = 0; //for testing
+unsigned long flash_time = millis();
 
 //to simplify the usage of the Flash header declared a different function - deleteFile - this serves as it's basis
 void delete_File(fs::FS &fs, const char *path)
@@ -94,7 +90,7 @@ namespace flash
 
     float getTimeElapsed() //*Check overflow
     {
-        return millis()-flash_start_time;
+        return millis()-flash_time;
     }
 
     void testFileIO(File file, int multiplier)
@@ -205,7 +201,7 @@ namespace flash
         auto const buf_size = sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float);   
         while (file.available())
         {
-            ; //! why?
+            ;
 
             StreamPipe<buf_size> stream;
             file.readBytes(stream.buf_out, buf_size);
@@ -297,7 +293,7 @@ namespace flash
         auto const buf_size = sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float) + sizeof(float);   
         while (file.available())
         {
-            ; //! why?
+            ;
 
             StreamPipe<buf_size> stream;
             file.readBytes(stream.buf_out, buf_size);
@@ -403,18 +399,6 @@ namespace flash
             return 1;
         }
         else {return 0;}
-    }
-
-    //for testing purposes
-    void printTime()
-    {
-        nowTime = getTimeElapsed();
-        if(prevTime + 1000 < nowTime)
-        {
-            Serial.println("Flash time: " + String(nowTime));
-            prevTime = nowTime;
-        }
-        
     }
 
     void closeFile(File file)

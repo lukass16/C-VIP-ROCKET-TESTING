@@ -6,21 +6,31 @@
 
 #define EEPROM_SIZE 255
 
-//! the same handling function assesses the arming timer of th switch ebing pulled too fast and the second nihrom activation - this should be fixed
-
 namespace arming
 {
 
+    //defining variables for first timer (timer safety for third switch)
     volatile bool timeKeeper = 0;
     hw_timer_t *timer = NULL;
     portMUX_TYPE timerMux = portMUX_INITIALIZER_UNLOCKED;
-    bool secondNihromActivated = 0;
 
     void IRAM_ATTR onTimer()
     {
         portENTER_CRITICAL_ISR(&timerMux);
         timeKeeper = 1;
         portEXIT_CRITICAL_ISR(&timerMux);
+    }
+
+    //defining variables for second timer (Nihrom timer)
+    volatile bool timeKeeperNihrom = 0;
+    hw_timer_t *timerNihrom = NULL;
+    portMUX_TYPE timerNihromMux = portMUX_INITIALIZER_UNLOCKED;
+
+    void IRAM_ATTR onNihromTimer()
+    {
+        portENTER_CRITICAL_ISR(&timerNihromMux);
+        timeKeeperNihrom = 1;
+        portEXIT_CRITICAL_ISR(&timerNihromMux);
     }
 
     //pin definitions
@@ -33,9 +43,7 @@ namespace arming
     int SecondSwitch = 38; //p16 INPUT
     int ThirdSwitch = 37;  //p15 INPUT
 
-    const int LopyPower = 0; //!JĀDEFINĒ!
-    int out = 26;            //p21 lampiņa/buzzer
-    int EEPROMclear = 2;     //p8 INPUT
+    int EEPROMclear = 2; //p8 INPUT
 
     bool fail = 0;
     bool AlreadyCalibrated = 0;
@@ -45,18 +53,21 @@ namespace arming
 
     //variables for Parachute battery voltage calculation
     float rawVoltage = 0;
-    int rawReading = 0;
-    float sumVoltage1 = 0;
-    float sumVoltage2 = 0;
+    int rawReading1 = 0, rawReading2 = 0;
     float voltage1 = 0;
     float voltage2 = 0;
-    float filteredVoltage = 0;
 
     //variables for Lopy battery voltage calculation
     int FirstSwitchReading = 0;
     int SecondSwitchReading = 0;
     int ThirdSwitchReading = 0;
     int rawReadingLopy = 0;
+    float voltageLopy = 0;
+
+    //variables for nihrom cycling
+    int intervalNihrom = 500, iterationsNihrom = 10;
+    unsigned long previousTimeFirst = 0, currentTimeFirst = 0, previousTimeSecond = 0, currentTimeSecond = 0;
+    bool firstNihromActive = 0, secondNihromActive = 0, firstNihromFirstActive = 1, secondNihromFirstActive = 1;
 
     void setup()
     {
@@ -69,42 +80,34 @@ namespace arming
         pinMode(SecondSwitch, INPUT);
         pinMode(FirstSwitch, INPUT);
 
-        pinMode(out, OUTPUT); //? buzzer
         pinMode(EEPROMclear, INPUT_PULLDOWN);
-
-        //sak timeri
-        timer = timerBegin(0, 80, true);
-        timerAttachInterrupt(timer, &onTimer, true);
-        timerAlarmWrite(timer, 5000000, false); //! 5sek - safety Note: code goes through all sensor initializations and calibration while timer is going, should create seperate timer start function
-        timerAlarmEnable(timer);
 
         //EEPROM setup
         EEPROM.begin(EEPROM_SIZE);
         Serial.println("Arming setup complete!");
     }
 
+    void startThirdSwitchTimer(int microseconds = 5000000) //safety timer for when third switch pulled too fast
+    {
+        //start third switch timer
+        timer = timerBegin(0, 80, true);
+        timerAttachInterrupt(timer, &onTimer, true);
+        timerAlarmWrite(timer, microseconds, false);
+        timerAlarmEnable(timer);
+    }
+
     float getBattery1Voltage()
     {
-        //static int readings = 0;
-        //readings++;
-        rawReading = analogRead(ParachuteBattery1);
-        rawVoltage = (rawReading / 320.0);
-        //sumVoltage1 += rawVoltage;
-        //voltage1 = sumVoltage1/readings;
-        //return voltage1;
-        return rawVoltage;
+        rawReading1 = analogRead(ParachuteBattery1);
+        voltage1 = (rawReading1 / 320.0);
+        return voltage1;
     }
 
     float getBattery2Voltage()
     {
-        // static int readings = 0;
-        // readings++;
-        rawReading = analogRead(ParachuteBattery2);
-        rawVoltage = (rawReading / 320.0); //!fix int/int
-        // sumVoltage2 += rawVoltage;
-        // voltage2 = sumVoltage2/readings;
-        // return voltage2;
-        return rawVoltage;
+        rawReading2 = analogRead(ParachuteBattery2);
+        voltage2 = (rawReading2 / 320.0);
+        return voltage2;
     }
 
     float getLopyBatteryVoltage()
@@ -121,12 +124,13 @@ namespace arming
             rawReadingLopy = ThirdSwitchReading;
         }
 
-        return rawReadingLopy / 620.0;
+        voltageLopy = rawReadingLopy / 602.0;
+        return voltageLopy;
     }
 
-    bool getParachuteBatteryStatus()
+    bool getBatteryStatus()
     {
-        if (voltage1 > 8.1 && voltage2 > 8.1)
+        if (voltage1 > 8.1 && voltage2 > 8.1 && voltageLopy > 4.05)
         {
             return 1;
         }
@@ -160,7 +164,7 @@ namespace arming
         }
     }
 
-    bool checkThirdSwitch() //!changed
+    bool checkThirdSwitch()
     {
         if (analogRead(ThirdSwitch) > 1000)
         {
@@ -174,13 +178,47 @@ namespace arming
 
     bool armingSuccess()
     {
-        if (AlreadyCalibrated == 1 && fail == 0)
+        if (AlreadyCalibrated == 1)
         {
             return 1;
         }
         else
         {
             return 0;
+        }
+    }
+
+    void reportFirstSwitch()
+    {
+        if (!arming::checkFirstSwitch() && !arming::firstSwitchHasBeen)
+        {
+            buzzer::buzz(1080);
+            delay(1000);
+            buzzer::buzzEnd();
+            arming::firstSwitchHasBeen = 1;
+        }
+    }
+
+    bool thirdSwitchTooFast()
+    {
+        if (!arming::fail)
+        {
+            if (!arming::timeKeeper)
+            {
+                buzzer::signalThirdSwitchLockout();
+                if (!arming::checkThirdSwitch())
+                {
+                    arming::fail = 1;
+                    buzzer::buzz(2000);
+                    Serial.println("Transition to flight state failed, affirmed too fast!");
+                    return 1;
+                }
+            }
+            return 0;
+        }
+        else
+        {
+            return 1;
         }
     }
 
@@ -202,32 +240,69 @@ namespace arming
         digitalWrite(nihrom2, LOW);
     }
 
-    void nihromActivate()
+    void nihromActivateFirst()
     {
-        digitalWrite(nihrom, HIGH); //pirmais nihroms //? commented out for testing
-        Serial.println("First Nihrom activated");
-        buzzer::buzz(3400);
-        //!POSSIBLE PROBLEM WITH TIMER INTERRUPT - SHOULD USE DIFFERENT INTERRUPT HANDLING FUNCTION (otherwise when checking timeKeeper it's already 1)
-        timer = timerBegin(0, 80, true);
-        timerAttachInterrupt(timer, &onTimer, true);
-        timerAlarmWrite(timer, 5000000, false); //!5sek for testing
-        timerAlarmEnable(timer);
+        static int iterations = 0;
+        if (firstNihromFirstActive)
+        {
+            Serial.println("First Nihrom activated");
+            timerNihrom = timerBegin(1, 80, true);
+            timerAttachInterrupt(timerNihrom, &onNihromTimer, true);
+            timerAlarmWrite(timerNihrom, 1000000, false); //1sek
+            timerAlarmEnable(timerNihrom);
+            firstNihromFirstActive = 0;
+        }
+        currentTimeFirst = millis();
+        if (currentTimeFirst - previousTimeFirst >= intervalNihrom && iterations <= iterationsNihrom) //if enough time has passed and not at the end of cycles
+        {
+            previousTimeFirst = currentTimeFirst; //save the last time that the nihrom was toggled
+            if (!firstNihromActive)               //if not active
+            {
+                digitalWrite(nihrom, HIGH);
+                firstNihromActive = 1;
+            }
+            else
+            {
+                digitalWrite(nihrom, LOW);
+                firstNihromActive = 0;
+                iterations++;
+            }
+        }
     }
 
     void nihromActivateSecond()
     {
-        if(timeKeeper && !secondNihromActivated)
+        static int iterations = 0;
+        if (timeKeeperNihrom && iterations <= iterationsNihrom) //if activated and not at the end of cycles
         {
-            Serial.println("Second Nihrom activated");
-            digitalWrite(nihrom2, HIGH); //otrais nihroms //? commented out for testing
-            secondNihromActivated = 1;
+            if (secondNihromFirstActive)
+            {
+                Serial.println("Second Nihrom activated");
+                secondNihromFirstActive = 0;
+            }
+            currentTimeSecond = millis();
+            if (currentTimeSecond - previousTimeSecond >= intervalNihrom) //if enough time has passed
+            {
+                previousTimeSecond = currentTimeSecond; //save the last time that the nihrom2 was toggled
+                if (!secondNihromActive)                //if not active
+                {
+                    digitalWrite(nihrom2, HIGH);
+                    secondNihromActive = 1;
+                }
+                else
+                {
+                    digitalWrite(nihrom2, LOW);
+                    secondNihromActive = 0;
+                    iterations++;
+                }
+            }
         }
     }
 
     sens_data::BatteryData getBatteryState()
     {
         sens_data::BatteryData BDat;
-        BDat.bs = getParachuteBatteryStatus();
+        BDat.bs = getBatteryStatus();
         BDat.bat1 = getBattery1Voltage();
         BDat.bat2 = getBattery2Voltage();
         return BDat;

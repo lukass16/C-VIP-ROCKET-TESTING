@@ -28,7 +28,7 @@ namespace comms
         {
             String serialized = comms::serializeData();
             lora::sendMessage(serialized, s_data.lora_message_id);
-            Serial.print("Lora (msg id: ");  //!commented out for testing
+            Serial.print("Lora (msg id: ");
             Serial.print(s_data.lora_message_id);
             Serial.print(") sent: ");
             Serial.println(serialized);

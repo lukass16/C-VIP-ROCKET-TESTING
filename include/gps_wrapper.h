@@ -11,11 +11,6 @@ namespace gps {
 
     sens_data::GpsData lastData;  //Last data so that values of zero don't get sent when gps doesn't have lock on
 
-    void setup(uint gpsRate = 9600)
-    {
-        Serial.println("Init GPS: " + String(gpsRate));
-    }
-
     void readGps()
     {
         hasData = false;

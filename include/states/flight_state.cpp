@@ -16,7 +16,7 @@ class FlightState : public State {
         bool timerEnabled = 0;
         int flash_counter = 0;
         sens_data::GpsData gd;
-
+        
         int magcount = 0;
         boolean isApogee()
         {
@@ -42,28 +42,26 @@ class FlightState : public State {
         void start() override
         {
             Serial.println("FLIGHT STATE");
-
             File file = flash::openFile(); //opening file for writing during flight
             bool start_writing = 0;
+
             if(magnetometer::hasBeenLaunch())
             {
                 start_writing = 1;
+                magnetometer::startApogeeTimer(15500000); //last ditch effort after restart - if magnetometer fails the timer will deploy
+                timerEnabled = 1;
             }
             
-            //!There is danger that if launch was detected previously the rocket goes
-            //!straight to arming and setting apogee timers, so if launch is detected and during testing 
-            //!the launchDetected EEPROM value is not changed it could lead to an inadvertent triggering of the mechanism - should test whether if arming pin is inserted this can happen
-
             while (!isApogee())
             {
-                buzzer::signalThirdSwitch();
-                //While apogee isn't reached and the timer isn't yet enabled the rocket checks for launch to enable the timer - the checking of launch has no other functionality
+                buzzer::signalFlight();
+                //While apogee isn't reached and the timer isn't yet enabled the rocket checks for launch to enable the timer
                 if (!timerEnabled)
                 {
                     if (magnetometer::launch())  //checks if rocket has been launched
                     {
-                        magnetometer::startApogeeTimer(14000000); //code to start timer - prints TIMER ENABLED if timer enabled
-                        magnetometer::arm(); //magnetometer can detect apogee
+                        magnetometer::startApogeeTimer(15500000); //code to start timer - time passed in microseconds (15.5s) - prints Timer Enabled if timer enabled
+                        magnetometer::arm(true); //magnetometer can detect apogee
                         buzzer::buzz(4000);
                         Serial.println("Launch detected!");
                         timerEnabled = 1;
@@ -96,14 +94,12 @@ class FlightState : public State {
                 if(start_writing)
                 {
                     flash_counter = flash::writeData(file, gd, md, bd, btd); //writing data to flash memory
-                    if(flash_counter % 100 == 0){flash::closeFile(file);file=flash::openFile();} //close and open the file every 100th reading
+                    if(flash_counter % 100 == 1){flash::closeFile(file);file=flash::openFile();} //close and open the file every 100th reading
                 }
-                //delay(100); //!remove in real test
                 
             }
             Serial.println("APOGEE DETECTED !!!");
-            arming::nihromActivate();
-
+            arming::nihromActivateFirst();
             flash::closeFile(file); //closing flash file
 
             this->_context->RequestNextPhase();

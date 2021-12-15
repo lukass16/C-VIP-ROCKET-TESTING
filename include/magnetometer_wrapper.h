@@ -4,6 +4,7 @@
 #include "MPU9250.h"
 #include "buzzer.h"
 #include "sensor_data.h"
+#include "arming.h"
 #include "EEPROM.h"
 
 //note: this wrapper also includes the EEPROM functionality
@@ -65,11 +66,12 @@ namespace magnetometer {
     float gyr_x = 0, gyr_y = 0, gyr_z = 0;
 
     //creating variables for timer and launch
-    float detAcc = 1;
+    float detAcc = 2; // m/s^2 //!Changed from 19.6 m/s^2
     int countAcc = 0;
 
-    //creating variables for apogee detection protection
-    bool armed = 0;
+    //creating variables for apogee detection and protection
+    bool buzzApogee = 0, buzzApogeeOn = 0;
+    float apogeeDetVal = 10;
 
     //creating a variable for timer detection of apogee
     volatile bool timerDetAp = 0;
@@ -90,13 +92,32 @@ namespace magnetometer {
         portEXIT_CRITICAL_ISR(&timerMux);
     }
 
+    //creating a variable for timer Lockout
+    volatile bool armed = 0;
+
+    //creating a pointer to a variable of type hw_timer_t
+    hw_timer_t *timerLockout = NULL;
+
+    //declaring a variable of type portMUX_TYPE, which will be used to take care of the synchronization between the main loop and the ISR, when modifying a shared variable
+    portMUX_TYPE timerLockoutMux = portMUX_INITIALIZER_UNLOCKED;
+
+    //creating the interrupt handling function - should be as short as possible
+    //The interrupt handling routine should have the IRAM_ATTR attribute, in order for the compiler to place the code in IRAM
+    void IRAM_ATTR onLockoutTimer()
+    {
+        //since the variable is shared with the main loop it will be modified inside a critical section, declared with the portENTER_CRITICAL_ISR and portEXIT_CRITICAL_ISR macros
+        portENTER_CRITICAL_ISR(&timerMux);
+        armed = 1;
+        portEXIT_CRITICAL_ISR(&timerMux);
+    }
+
     bool launch()
     {
         if (IMU.getAccelY_mss() > detAcc)
         {
             countAcc++;
         }
-        if (countAcc > 20) //!Changed for test - was 50
+        if (countAcc > 10) //!changed from 20
         {
             Serial.println("Writing to EEPROM that launch detected");
             EEPROM.writeFloat(36, 1); //Adding that launch is detected
@@ -120,6 +141,23 @@ namespace magnetometer {
         timerAlarmEnable(timer);
 
         Serial.println("Timer enabled");
+    }
+
+    void startLockoutTimer(int timerLength)
+    {
+        //initializing timer - setting the number of the timer, the value of the prescaler and stating that the counter should count up (true)
+        timerLockout = timerBegin(2, 80, true);
+
+        //binding the timer to a handling function
+        timerAttachInterrupt(timerLockout, &onLockoutTimer, true);
+
+        //specifying the counter value in which the timer interrupt will be generated and indicating that the timer should not automatically reload (false) upon generating the interrupt
+        timerAlarmWrite(timerLockout, timerLength, false);
+
+        //enabling the timer
+        timerAlarmEnable(timerLockout);
+
+        Serial.println("Lockout timer started");
     }
 
     bool timerDetectApogee()
@@ -259,6 +297,7 @@ namespace magnetometer {
 
     void clearEEPROM()
     {
+        buzzer::signalEEPROMClear();
         for (int i = 0; i <= 36; i = i + 4)
         {
             EEPROM.writeFloat(i, 0.0);
@@ -321,7 +360,7 @@ namespace magnetometer {
         }
         else
         {
-            return field_val <= 10;
+            return field_val <= apogeeDetVal;
         }
     }
 
@@ -460,17 +499,44 @@ namespace magnetometer {
         return MDat;
     }
 
+    void enableBuzzApogee()
+    {
+        buzzApogee = 1;
+    }
+
+    void disableBuzzApogee()
+    {
+        buzzApogee = 0;
+    }
+
     void processApogee()
     {
-        if (isApogee(cor_y))
+        if (cor_y <= apogeeDetVal && arming::checkSecondSwitch())
         {
-            buzzer::buzz(3400);
+            if(!buzzApogeeOn)
+            {
+                buzzer::buzz(3400);
+                buzzApogeeOn = 1;
+            }
+            
+        }
+        else if(buzzApogeeOn)
+        {
+            buzzer::buzzEnd();
+            buzzApogeeOn = 0;
         }
     }
 
-    void arm()
+    void arm(bool lockout = false)
     {
-        armed = 1;
+        if(lockout)
+        {
+            startLockoutTimer(2000000);
+        }
+        else
+        {
+            armed = 1;
+        }
     }
 
     void readMagnetometer()
@@ -480,8 +546,6 @@ namespace magnetometer {
 
         getMagValues();
         getAccelValues();
-
-        //processApogee();
     }
 
 }
