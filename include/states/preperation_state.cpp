@@ -54,6 +54,15 @@ class PreperationState: public State {
             magnetometer::setup();
             comms::setup(868E6);
 
+            magnetometer::calibrateAccelerometer();
+
+            while(true)
+            {
+                magnetometer::readMagnetometer();
+                magnetometer::displayAcceleration();
+                delay(1000);
+            }
+
             if(arming::clearEEPROM()) //checks EEPROM clear jumper
             {
                 magnetometer::clearEEPROM();
